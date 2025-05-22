@@ -1,0 +1,10 @@
+br\com\atletahub\service\JwtService.class
+br\com\atletahub\repository\UsuarioRepository.class
+br\com\atletahub\dto\AuthResponse.class
+br\com\atletahub\model\Usuario.class
+br\com\atletahub\AtletahubApplication.class
+br\com\atletahub\config\SecurityConfig.class
+br\com\atletahub\dto\AuthRequest.class
+br\com\atletahub\service\UserDetailsServiceImpl.class
+br\com\atletahub\controller\AuthController.class
+br\com\atletahub\config\JwtRequestFilter.class
