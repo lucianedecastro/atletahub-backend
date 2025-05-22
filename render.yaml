@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: atletahub-api
+    env: java
+    region: ohio
+    plan: free
+    buildCommand: "mvn clean install -DskipTests"
+    startCommand: "java -jar target/atletahub-1.0.0.jar"
+    envVars:
+      - key: DB_URL
+        value: "jdbc:mysql://localhost:3306/atletahub"
+      - key: DB_USERNAME
+        value: "atletahub_user"
+      - key: DB_PASSWORD
+        value: "desantamaroavdn2018"
+      - key: jwt.secret-key
+        value: "b1hzi01HyTCEixi9seAczIyUe75VsuadzwbV5OJb548="
+      - key: jwt.expiration-time
+        value: "86400000"
