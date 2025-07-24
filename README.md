@@ -1,4 +1,5 @@
 🏆 AtletaHub: Conectando Talento e Oportunidade no Esporte
+
 Bem-vindo(a) ao repositório do AtletaHub, uma plataforma digital inovadora desenvolvida para revolucionar a forma como atletas e marcas se conectam! Nosso objetivo é democratizar o acesso ao patrocínio, impulsionar o desenvolvimento de talentos e promover maior transparência e eficiência no ecossistema esportivo.
 
 Este projeto é fruto do trabalho de Projeto Integrador do 6º Módulo do Curso de Graduação em Análise e Desenvolvimento de Sistemas da UNISA – Universidade de Santo Amaro.
@@ -78,10 +79,15 @@ Manutenibilidade: Código limpo, modular e testável.
 O AtletaHub representa mais do que um projeto de software; ele é uma iniciativa com o potencial de transformar a realidade de muitos atletas, democratizando o acesso a oportunidades de patrocínio.
 
 Próximas etapas e pesquisas futuras incluem:
+
 Implementação e Desenvolvimento: Conclusão do protótipo funcional e testes práticos.
+
 Inteligência Artificial: Implementação de algoritmos de Machine Learning para otimizar o "match" entre atletas e marcas, indo além dos critérios de busca atuais.
+
 Módulos de Gestão: Adição de funcionalidades para gestão de contratos e relatórios de desempenho pós-patrocínio.
+
 Engajamento Comunitário: Exploração de fóruns, grupos de discussão e eventos na plataforma.
+
 Validação e Refinamento UX: Testes de usabilidade extensivos para aprimorar continuamente a interface e a experiência de navegação.
 
 Agradecemos o seu interesse no AtletaHub! Juntos, podemos impulsionar o esporte e apoiar o desenvolvimento de talentos.
