@@ -27,8 +27,10 @@ public class Usuario implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_usuario")
     private Long idUsuario;
+
     @NotBlank
     private String nome;
+
     @NotBlank @Email
     private String email;
 
@@ -39,15 +41,13 @@ public class Usuario implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_usuario")
     @NotNull
-    private TipoUsuario tipoUsuario; // ATLETA, MARCA, ADMIN
-
+    private TipoUsuario tipoUsuario;
 
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private PerfilAtleta perfilAtleta;
 
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private PerfilMarca perfilMarca;
-
 
     public Usuario(@NotBlank String nome, @NotBlank @Email String email, @NotBlank String senha, @NotNull TipoUsuario tipoUsuario) {
         this.nome = nome;
@@ -56,14 +56,17 @@ public class Usuario implements UserDetails {
         this.tipoUsuario = tipoUsuario;
     }
 
-    // Métodos para o Spring Security (UserDetails)
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.tipoUsuario == TipoUsuario.ADMIN) {
-            return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_ATLETA"), new SimpleGrantedAuthority("ROLE_MARCA"));
+            return List.of(
+                    new SimpleGrantedAuthority("ROLE_ADMIN"),
+                    new SimpleGrantedAuthority("ROLE_ATLETA"),
+                    new SimpleGrantedAuthority("ROLE_MARCA")
+            );
         } else if (this.tipoUsuario == TipoUsuario.ATLETA) {
             return List.of(new SimpleGrantedAuthority("ROLE_ATLETA"));
-        } else { // MARCA
+        } else {
             return List.of(new SimpleGrantedAuthority("ROLE_MARCA"));
         }
     }
@@ -96,5 +99,15 @@ public class Usuario implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return "Usuario{" +
+                "idUsuario=" + idUsuario +
+                ", nome='" + nome + '\'' +
+                ", email='" + email + '\'' +
+                ", tipoUsuario=" + tipoUsuario +
+                '}';
     }
 }

@@ -23,7 +23,7 @@ public class UsuarioController {
     @Autowired
     private UsuarioService usuarioService;
 
-    // Endpoint para buscar todos os usuários (geral, pode ser usado para testes)
+
     @GetMapping
     public ResponseEntity<List<DadosDetalhamentoUsuario>> listarTodos() {
         List<Usuario> usuarios = usuarioService.listarTodos();
@@ -33,14 +33,12 @@ public class UsuarioController {
         return ResponseEntity.ok(detalhes);
     }
 
-    // Endpoint para buscar todos os usuários do tipo ATLETA ou MARCA
 
     @GetMapping("/tipo")
     @PreAuthorize("hasAnyRole('ATLETA', 'MARCA', 'ADMIN')")
     public ResponseEntity<List<DadosDetalhamentoUsuario>> listarPorTipo(
             @RequestParam("tipoUsuario") String tipoUsuario, Authentication authentication) {
 
-        // Regra de negócio: Apenas usuários autenticados podem filtrar por tipo
         List<Usuario> usuarios = usuarioService.buscarPorTipo(tipoUsuario);
         List<DadosDetalhamentoUsuario> detalhes = usuarios.stream()
                 .map(DadosDetalhamentoUsuario::new)
@@ -48,7 +46,7 @@ public class UsuarioController {
         return ResponseEntity.ok(detalhes);
     }
 
-    // Endpoint para buscar um único usuário por ID (usado na página de perfil)
+
     @GetMapping("/{id}")
     public ResponseEntity<DadosDetalhamentoUsuario> buscarPorId(@PathVariable Long id) {
         Usuario usuario = usuarioService.buscarPorId(id);

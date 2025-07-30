@@ -14,8 +14,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 
 @Component
 public class SecurityFilter extends OncePerRequestFilter {
@@ -26,31 +24,30 @@ public class SecurityFilter extends OncePerRequestFilter {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    private static final List<String> PUBLIC_PATHS = Arrays.asList(
-            "/auth/login",
-            "/auth/registrar"
-    );
-
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String requestURI = request.getRequestURI();
+        String method = request.getMethod();
 
-        if (PUBLIC_PATHS.contains(requestURI)) {
+        // Libera diretamente requisições do tipo OPTIONS (pré-flight CORS)
+        if ("OPTIONS".equalsIgnoreCase(method)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        var token = this.recuperarToken(request);
+        String token = recuperarToken(request);
         if (token != null) {
+            try {
+                String email = tokenService.getSubject(token);
+                UserDetails usuario = usuarioRepository.findByEmail(email).orElse(null);
 
-            var email = tokenService.getSubject(token);
-            UserDetails usuario = usuarioRepository.findByEmail(email).orElse(null);
-
-            if (usuario != null) {
-                var authentication = new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                if (usuario != null) {
+                    var authentication = new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            } catch (Exception ex) {
+                // Log pode ser adicionado aqui, se necessário
             }
         }
 

@@ -10,12 +10,10 @@ import java.util.Optional;
 @Repository
 public interface MatchRepository extends JpaRepository<Match, Long> {
 
-    // Para verificar se um match específico já existe entre dois usuários
+   Optional<Match> findByUsuarioA_IdUsuarioAndUsuarioB_IdUsuario(Long usuarioAId, Long usuarioBId);
 
-    Optional<Match> findByUsuarioA_IdUsuarioAndUsuarioB_IdUsuario(Long usuarioAId, Long usuarioBId);
 
-    // Para listar todos os matches de um determinado usuário, seja ele usuarioA ou usuarioB
-    List<Match> findByUsuarioA_IdUsuarioOrUsuarioB_IdUsuario(Long usuarioAId, Long usuarioBId);
+   List<Match> findByUsuarioA_IdUsuarioOrUsuarioB_IdUsuario(Long usuarioAId, Long usuarioBId);
 
 
 }

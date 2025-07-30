@@ -26,6 +26,7 @@ public class TokenService {
             return JWT.create()
                     .withIssuer("atletahub-api")
                     .withSubject(usuario.getEmail())
+                    .withClaim("role", "ROLE_" + usuario.getTipoUsuario().name())
                     .withExpiresAt(genExpirationDate())
                     .sign(algorithm);
         } catch (JWTCreationException exception) {
@@ -33,7 +34,6 @@ public class TokenService {
         }
     }
 
-    // Método que valida o token e retorna o assunto (e-mail)
     public String getSubject(String token) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(secret);
@@ -43,7 +43,6 @@ public class TokenService {
                     .verify(token)
                     .getSubject();
         } catch (JWTVerificationException exception) {
-            // Lança exceções específicas para o SecurityFilter tratar
             throw exception;
         }
     }

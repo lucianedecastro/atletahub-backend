@@ -12,29 +12,29 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URI;
 import java.util.List;
 
-@RestController // Marca a classe como um controlador REST
-@RequestMapping("/mensagens") // Define o caminho base para todos os endpoints deste controlador
+@RestController
+@RequestMapping("/mensagens")
 public class MensagemController {
 
     @Autowired
-    private MensagemService mensagemService; // Injeta o serviço de mensagens
+    private MensagemService mensagemService;
 
-    @PostMapping // Mapeia requisições POST para /mensagens
+    @PostMapping
     public ResponseEntity<DetalhesMensagemDTO> enviarMensagem(
-            @RequestBody @Valid DadosEnvioMensagemDTO dados, // Recebe os dados da mensagem e valida
-            UriComponentsBuilder uriBuilder // Para construir a URI de retorno no 201 Created
+            @RequestBody @Valid DadosEnvioMensagemDTO dados,
+            UriComponentsBuilder uriBuilder
     ) {
         DetalhesMensagemDTO mensagemSalva = mensagemService.enviarMensagem(dados);
 
-        // Constrói a URI para o recurso criado (boa prática para 201 Created)
+
         URI uri = uriBuilder.path("/mensagens/{id}").buildAndExpand(mensagemSalva.id()).toUri();
 
         return ResponseEntity.created(uri).body(mensagemSalva);
     }
 
-    @GetMapping("/match/{idMatch}") // Mapeia requisições GET para /mensagens/match/{idMatch}
+    @GetMapping("/match/{idMatch}")
     public ResponseEntity<List<DetalhesMensagemDTO>> listarMensagensDoMatch(
-            @PathVariable Long idMatch // Pega o ID do match da URL
+            @PathVariable Long idMatch
     ) {
         List<DetalhesMensagemDTO> mensagens = mensagemService.listarMensagensDoMatch(idMatch);
         return ResponseEntity.ok(mensagens);

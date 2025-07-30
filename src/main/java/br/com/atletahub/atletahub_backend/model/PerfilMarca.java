@@ -1,8 +1,7 @@
 package br.com.atletahub.atletahub_backend.model;
 
-import br.com.atletahub.atletahub_backend.dto.perfil.DadosAtualizacaoPerfilMarca; // Vamos criar este DTO
+import br.com.atletahub.atletahub_backend.dto.perfil.DadosAtualizacaoPerfilMarca;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -29,8 +28,8 @@ public class PerfilMarca {
     @JsonIgnore
     private Usuario usuario;
 
-    @Column(name = "produto", length = 255)
     private String produto;
+
 
     @Column(name = "tempo_mercado")
     private Integer tempoMercado;
@@ -41,15 +40,15 @@ public class PerfilMarca {
     @Column(name = "tipo_investimento", length = 255)
     private String tipoInvestimento;
 
-
     @Column(name = "redes_social")
-    @NotBlank
     private String redesSocial;
+
 
 
 
     public PerfilMarca(Usuario usuario) {
         this.usuario = usuario;
+
         this.produto = "";
         this.tempoMercado = 0;
         this.atletasPatrocinados = "";
@@ -57,6 +56,7 @@ public class PerfilMarca {
         this.redesSocial = "";
     }
 
+    // Método para atualizar as informações a partir do DTO
     public void atualizar(DadosAtualizacaoPerfilMarca dados) {
         if (dados.produto() != null) {
             this.produto = dados.produto();

@@ -2,11 +2,14 @@ package br.com.atletahub.atletahub_backend.model;
 
 import br.com.atletahub.atletahub_backend.dto.perfil.DadosAtualizacaoPerfilAtleta;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.math.BigDecimal; // Importe BigDecimal
 import java.time.LocalDate;
 
 @Table(name = "perfil_atleta")
@@ -21,14 +24,20 @@ public class PerfilAtleta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPerfilAtleta;
 
-    @OneToOne
-    // CORREÇÃO AQUI: Adicione referencedColumnName
-    @JoinColumn(name = "id_usuario", referencedColumnName = "id_usuario", unique = true)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario", referencedColumnName = "id_usuario", unique = true, nullable = false)
+    @JsonIgnore
     private Usuario usuario;
 
     private Integer idade;
-    private Double altura;
-    private Double peso;
+
+
+    @Column(precision = 3, scale = 2)
+    private BigDecimal altura;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal peso;
+
     private String modalidade;
 
     @Column(name = "competicoes_titulos", columnDefinition = "TEXT")
@@ -52,7 +61,7 @@ public class PerfilAtleta {
     @Column(name = "midiakit_url")
     private String midiakitUrl;
 
-    public PerfilAtleta(Usuario usuario, Integer idade, Double altura, Double peso, String modalidade, String competicoesTitulos, String redesSocial, String historico, String posicao, String observacoes, LocalDate dataNascimento, String telefoneContato, String midiakitUrl) {
+    public PerfilAtleta(Usuario usuario, Integer idade, BigDecimal altura, BigDecimal peso, String modalidade, String competicoesTitulos, String redesSocial, String historico, String posicao, String observacoes, LocalDate dataNascimento, String telefoneContato, String midiakitUrl) {
         this.usuario = usuario;
         this.idade = idade;
         this.altura = altura;
@@ -88,12 +97,14 @@ public class PerfilAtleta {
         if (dados.idade() != null) {
             this.idade = dados.idade();
         }
+
         if (dados.altura() != null) {
             this.altura = dados.altura();
         }
         if (dados.peso() != null) {
             this.peso = dados.peso();
         }
+
         if (dados.modalidade() != null && !dados.modalidade().isBlank()) {
             this.modalidade = dados.modalidade();
         }
@@ -118,7 +129,7 @@ public class PerfilAtleta {
         if (dados.telefoneContato() != null && !dados.telefoneContato().isBlank()) {
             this.telefoneContato = dados.telefoneContato();
         }
-        if (dados.midiakitUrl() != null && !dados.midiakitUrl().isBlank()) { // Atualiza o midiakitUrl
+        if (dados.midiakitUrl() != null && !dados.midiakitUrl().isBlank()) {
             this.midiakitUrl = dados.midiakitUrl();
         }
     }

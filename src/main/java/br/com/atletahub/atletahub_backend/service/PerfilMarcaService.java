@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional; // Importe Optional para usar isEmpty()
+import java.util.Optional;
 
 @Service
 public class PerfilMarcaService {
@@ -21,11 +21,9 @@ public class PerfilMarcaService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    // Método para criar um perfil de marca inicial quando um usuário do tipo MARCA é registrado
+
     @Transactional
     public void criarPerfilMarcaInicial(Usuario usuario) {
-        // Verifica se o usuário é do tipo MARCA e se ainda não tem um perfil de marca
-
         Optional<PerfilMarca> perfilExistente = perfilMarcaRepository.findByUsuario_IdUsuario(usuario.getIdUsuario());
 
         if (usuario.getTipoUsuario() == TipoUsuario.MARCA && perfilExistente.isEmpty()) {
@@ -34,26 +32,27 @@ public class PerfilMarcaService {
         }
     }
 
-    // Método para atualizar um perfil de marca
+
     @Transactional
     public PerfilMarca atualizarPerfilMarca(Long idUsuario, DadosAtualizacaoPerfilMarca dados) {
-        // 1. Encontrar o PerfilMarca pelo ID do Usuário
-
-        PerfilMarca perfil = perfilMarcaRepository.findByUsuario_IdUsuario(idUsuario)
-                .orElseThrow(() -> new RuntimeException("Perfil de marca não encontrado para o usuário: " + idUsuario));
-
-        // 2. Chamar o método de atualização na entidade PerfilMarca
-
+        PerfilMarca perfil = this.buscarPerfilMarcaPorIdUsuario(idUsuario);
         perfil.atualizar(dados);
-
-        // 3. Salvar as alterações no banco de dados
         return perfilMarcaRepository.save(perfil);
     }
 
-    // Método para buscar um perfil de marca pelo ID do usuário
-    public PerfilMarca buscarPerfilMarcaPorIdUsuario(Long idUsuario) {
 
-        return perfilMarcaRepository.findByUsuario_IdUsuario(idUsuario)
-                .orElseThrow(() -> new RuntimeException("Perfil de marca não encontrado para o usuário: " + idUsuario));
+    @Transactional
+    public PerfilMarca buscarPerfilMarcaPorIdUsuario(Long idUsuario) {
+        Optional<PerfilMarca> perfilOptional = perfilMarcaRepository.findByUsuario_IdUsuario(idUsuario);
+
+        if (perfilOptional.isPresent()) {
+            return perfilOptional.get();
+        } else {
+            Usuario usuario = usuarioRepository.findById(idUsuario)
+                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado ao tentar criar perfil de marca para o ID: " + idUsuario));
+
+            PerfilMarca novoPerfil = new PerfilMarca(usuario);
+            return perfilMarcaRepository.save(novoPerfil);
+        }
     }
 }

@@ -2,8 +2,9 @@ package br.com.atletahub.atletahub_backend.dto.perfil;
 
 import br.com.atletahub.atletahub_backend.model.PerfilMarca;
 
-// DTO para detalhamento (resposta) do PerfilMarca
+
 public record DadosDetalhamentoPerfilMarca(
+
         Long idPerfilMarca,
         Long idUsuario,
         String produto,
@@ -11,6 +12,7 @@ public record DadosDetalhamentoPerfilMarca(
         String atletasPatrocinados,
         String tipoInvestimento,
         String redesSocial
+
 ) {
     public DadosDetalhamentoPerfilMarca(PerfilMarca perfil) {
         this(

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,7 +36,7 @@ public class AuthController {
     @Autowired
     private UsuarioRepository usuarioRepository;
     @Autowired
-    private PasswordEncoder passwordEncoder; // Para o método de registro
+    private PasswordEncoder passwordEncoder;
     @Autowired
     private TokenService tokenService;
 
@@ -44,18 +45,18 @@ public class AuthController {
         logger.info("Tentativa de login para: {}", dados.email());
 
         try {
-            // Cria um objeto de autenticação com as credenciais fornecidas
+
             UsernamePasswordAuthenticationToken usernamePassword = new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
-            // Autentica o usuário usando o AuthenticationManager
+
             Authentication auth = this.authenticationManager.authenticate(usernamePassword);
 
-            // Obtém o usuário autenticado
+
             Usuario usuarioLogado = (Usuario) auth.getPrincipal();
 
-            // Gera o token JWT para o usuário autenticado
+
             String token = tokenService.generateToken(usuarioLogado);
 
-            // Prepara a resposta incluindo o token e os dados do usuário
+
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
 
@@ -63,16 +64,16 @@ public class AuthController {
             userData.put("id", usuarioLogado.getIdUsuario().toString());
             userData.put("email", usuarioLogado.getEmail());
             userData.put("name", usuarioLogado.getNome());
-            userData.put("userType", usuarioLogado.getTipoUsuario().toString().toLowerCase()); // Garante o tipo em minúsculas
+            userData.put("userType", usuarioLogado.getTipoUsuario().toString().toLowerCase());
 
-            response.put("user", userData); // Adiciona o objeto 'user' à resposta
+            response.put("user", userData);
 
             logger.info("Login bem-sucedido para: {}", dados.email());
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             logger.error("Erro no login para {}: {}", dados.email(), e.getMessage());
-            // Retorna uma resposta de erro mais específica, se possível
+
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Erro no login: " + e.getMessage());
         }
     }
@@ -87,7 +88,7 @@ public class AuthController {
         }
 
         try {
-            // Converte a String tipoUsuario para o Enum TipoUsuario
+
             TipoUsuario tipoUsuarioEnum = TipoUsuario.valueOf(dados.tipoUsuario().toUpperCase());
 
             String senhaCriptografada = passwordEncoder.encode(dados.senha());
@@ -98,12 +99,12 @@ public class AuthController {
 
             logger.info("Registro bem-sucedido para: {}", dados.email());
             return ResponseEntity.ok("Usuário registrado com sucesso!");
-        } catch (IllegalArgumentException e) {
-            logger.error("Tipo de usuário inválido: {}. Erro: {}", dados.tipoUsuario(), e.getMessage());
-            return ResponseEntity.badRequest().body("Tipo de usuário inválido.");
+        } catch (BadCredentialsException e) {
+            logger.warn("Credenciais inválidas para: {}", dados.email());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciais inválidas"));
         } catch (Exception e) {
-            logger.error("Erro no registro para {}: {}", dados.email(), e.getMessage());
-            return ResponseEntity.internalServerError().body("Erro ao registrar usuário.");
+            logger.error("Erro no login para {}: {}", dados.email(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Erro interno ao realizar login"));
         }
     }
 }

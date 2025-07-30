@@ -5,6 +5,7 @@ import br.com.atletahub.atletahub_backend.model.PerfilMarca;
 import br.com.atletahub.atletahub_backend.model.Usuario;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -13,17 +14,18 @@ public record DadosDetalhamentoUsuario(
         String nome,
         String email,
         String tipoUsuario,
-
         Integer idade,
         String modalidade,
         String competicoesTitulos,
         String redesSocial,
         String historico,
-
         String produto,
         Integer tempoMercado,
         String atletasPatrocinados,
-        String tipoInvestimento
+        String tipoInvestimento,
+        BigDecimal altura,
+        BigDecimal peso
+
 ) {
     public DadosDetalhamentoUsuario(Usuario usuario) {
         this(
@@ -39,7 +41,10 @@ public record DadosDetalhamentoUsuario(
                 Optional.ofNullable(usuario.getPerfilMarca()).map(PerfilMarca::getProduto).orElse(null),
                 Optional.ofNullable(usuario.getPerfilMarca()).map(PerfilMarca::getTempoMercado).orElse(null),
                 Optional.ofNullable(usuario.getPerfilMarca()).map(PerfilMarca::getAtletasPatrocinados).orElse(null),
-                Optional.ofNullable(usuario.getPerfilMarca()).map(PerfilMarca::getTipoInvestimento).orElse(null)
+                Optional.ofNullable(usuario.getPerfilMarca()).map(PerfilMarca::getTipoInvestimento).orElse(null),
+                Optional.ofNullable(usuario.getPerfilAtleta()).map(PerfilAtleta::getAltura).orElse(null),
+                Optional.ofNullable(usuario.getPerfilAtleta()).map(PerfilAtleta::getPeso).orElse(null)
+
         );
     }
 }

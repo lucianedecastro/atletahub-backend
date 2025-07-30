@@ -43,18 +43,18 @@ public class InteresseService {
             throw new IllegalArgumentException("Você já expressou interesse neste usuário.");
         }
 
-        // 2. Criar a entidade Interesse
+
         Interesse novoInteresse = new Interesse(origem, destino, dados.tipoInteresse());
         Interesse interesseSalvo = interesseRepository.save(novoInteresse);
 
-        // Atribuindo o valor de retorno da chamada ao MatchService
+
         Match matchGerado = matchService.verificarEGerarMatch(origem, destino, dados.tipoInteresse());
 
         if (matchGerado != null) {
             System.out.println("Match gerado com sucesso! ID: " + matchGerado.getId());
         }
 
-        return interesseSalvo; // Retorna o interesse salvo
+        return interesseSalvo;
     }
 
 
