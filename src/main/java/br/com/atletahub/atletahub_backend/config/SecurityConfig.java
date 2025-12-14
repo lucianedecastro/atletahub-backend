@@ -18,6 +18,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.Collections; // Importante para o singletonList ou listas vazias se precisar
 
 @Configuration
 @EnableWebSecurity
@@ -27,12 +28,17 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, SecurityFilter securityFilter) throws Exception {
         return httpSecurity
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configura o CORS aqui
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
 
-                        // Rotas públicas
+                        // Rotas públicas (Auth)
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/registrar").permitAll()
+                        // CORREÇÃO CRÍTICA: Adicionado /register (inglês) para bater com o Frontend
+                        .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/registrar").permitAll() // Mantém o PT-BR por compatibilidade
+
+                        // Rotas públicas (Gerais)
                         .requestMatchers(HttpMethod.GET, "/modalidades").permitAll()
                         .requestMatchers("/error").permitAll()
 
@@ -44,7 +50,7 @@ public class SecurityConfig {
 
                         // Usuários
                         .requestMatchers(HttpMethod.GET, "/usuarios/tipo").hasAnyRole("ATLETA", "MARCA", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/usuarios/**").authenticated() // Corrigido para aceitar paths com {id}
+                        .requestMatchers(HttpMethod.GET, "/usuarios/**").authenticated()
 
                         // Interesses
                         .requestMatchers(HttpMethod.POST, "/interesses").authenticated()
@@ -63,7 +69,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .build();
     }
 
@@ -80,17 +85,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
 
-                "http://localhost:5173",
-                "http://localhost:8080",
-                "https://atleta-hub.vercel.app",
-                "https://api.atletahub.com.br",
-                "https://www.atletahub.com.br"
-        ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // CORREÇÃO DE CORS: "allowedOriginPatterns" é mais flexível que "allowedOrigins"
+        // O "*" aqui diz: Aceite conexões de QUALQUER lugar (www.atletahub, localhost, render, etc)
+        // Isso resolve o problema de origens bloqueadas durante o desenvolvimento/testes.
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(true); // Permite enviar cookies/tokens
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
