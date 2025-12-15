@@ -2,10 +2,9 @@ package br.com.atletahub.atletahub_backend.controller;
 
 import br.com.atletahub.atletahub_backend.dto.usuario.DadosLogin;
 import br.com.atletahub.atletahub_backend.dto.usuario.DadosRegistroUsuario;
-import br.com.atletahub.atletahub_backend.model.TipoUsuario;
 import br.com.atletahub.atletahub_backend.model.Usuario;
-import br.com.atletahub.atletahub_backend.repository.UsuarioRepository;
 import br.com.atletahub.atletahub_backend.service.TokenService;
+import br.com.atletahub.atletahub_backend.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,14 +12,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,81 +29,69 @@ public class AuthController {
     private AuthenticationManager authenticationManager;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private UsuarioService usuarioService;
 
     @Autowired
     private TokenService tokenService;
 
+    // ==========================
+    // LOGIN
+    // ==========================
     @PostMapping("/login")
-    public ResponseEntity login(@RequestBody @Valid DadosLogin dados) {
+    public ResponseEntity<?> login(@RequestBody @Valid DadosLogin dados) {
         logger.info("Tentativa de login para: {}", dados.email());
 
         try {
-            UsernamePasswordAuthenticationToken usernamePassword =
+            UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
 
-            Authentication auth = this.authenticationManager.authenticate(usernamePassword);
-            Usuario usuarioLogado = (Usuario) auth.getPrincipal();
+            Authentication authentication = authenticationManager.authenticate(authToken);
+            Usuario usuario = (Usuario) authentication.getPrincipal();
 
-            String token = tokenService.generateToken(usuarioLogado);
+            String token = tokenService.generateToken(usuario);
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
 
-            Map<String, String> userData = new HashMap<>();
-            userData.put("id", usuarioLogado.getIdUsuario().toString());
-            userData.put("email", usuarioLogado.getEmail());
-            userData.put("name", usuarioLogado.getNome());
-            userData.put("userType", usuarioLogado.getTipoUsuario().toString().toLowerCase());
+            Map<String, Object> user = new HashMap<>();
+            user.put("id", usuario.getIdUsuario());
+            user.put("email", usuario.getEmail());
+            user.put("name", usuario.getNome());
+            user.put("userType", usuario.getTipoUsuario().name().toLowerCase());
 
-            response.put("user", userData);
+            response.put("user", user);
 
-            logger.info("Login bem-sucedido para: {}", dados.email());
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            logger.error("Erro no login para {}: {}", dados.email(), e.getMessage());
+            logger.error("Erro no login", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Erro no login: " + e.getMessage());
+                    .body(Map.of("message", "Email ou senha inválidos"));
         }
     }
 
-    // 🔥 Alias em inglês para compatibilidade com o frontend
+    // ==========================
+    // REGISTRO (CORRETO)
+    // ==========================
     @PostMapping({"/registrar", "/register"})
-    public ResponseEntity registrar(@RequestBody @Valid DadosRegistroUsuario dados) {
+    public ResponseEntity<?> registrar(@RequestBody @Valid DadosRegistroUsuario dados) {
         logger.info("Tentativa de registro para: {}", dados.email());
 
-        if (this.usuarioRepository.findByEmail(dados.email()).isPresent()) {
-            logger.warn("Email já cadastrado: {}", dados.email());
-            return ResponseEntity.badRequest().body("Email já cadastrado.");
-        }
-
         try {
-            TipoUsuario tipoUsuarioEnum =
-                    TipoUsuario.valueOf(dados.tipoUsuario().toUpperCase());
+            usuarioService.registrarUsuario(dados);
 
-            String senhaCriptografada = passwordEncoder.encode(dados.senha());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of("message", "Usuário registrado com sucesso"));
 
-            Usuario novoUsuario =
-                    new Usuario(dados.nome(), dados.email(), senhaCriptografada, tipoUsuarioEnum);
-
-            usuarioRepository.save(novoUsuario);
-
-            logger.info("Registro bem-sucedido para: {}", dados.email());
-            return ResponseEntity.ok("Usuário registrado com sucesso!");
-
-        } catch (BadCredentialsException e) {
-            logger.warn("Credenciais inválidas para: {}", dados.email());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Credenciais inválidas"));
+        } catch (IllegalArgumentException e) {
+            logger.warn("Erro de validação no registro: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage()));
 
         } catch (Exception e) {
-            logger.error("Erro no registro para {}: {}", dados.email(), e.getMessage(), e);
+            logger.error("Erro interno no registro", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Erro interno ao realizar registro"));
+                    .body(Map.of("message", "Erro interno ao realizar cadastro"));
         }
     }
 }
