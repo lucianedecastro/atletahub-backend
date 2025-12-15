@@ -31,17 +31,22 @@ public class MensagemService {
     public DetalhesMensagemDTO enviarMensagem(DadosEnvioMensagemDTO dados) {
 
         Match match = matchRepository.findById(dados.idMatch())
-                .orElseThrow(() -> new IllegalArgumentException("Match não encontrado com o ID: " + dados.idMatch()));
-
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Match não encontrado. ID: " + dados.idMatch())
+                );
 
         Usuario remetente = usuarioRepository.findById(dados.idRemetente())
-                .orElseThrow(() -> new IllegalArgumentException("Remetente (Usuário) não encontrado com o ID: " + dados.idRemetente()));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Usuário remetente não encontrado. ID: " + dados.idRemetente())
+                );
 
+        boolean participaDoMatch =
+                match.getUsuarioA().getIdUsuario().equals(remetente.getIdUsuario()) ||
+                        match.getUsuarioB().getIdUsuario().equals(remetente.getIdUsuario());
 
-        if (!match.getUsuarioA().getIdUsuario().equals(remetente.getIdUsuario()) && !match.getUsuarioB().getIdUsuario().equals(remetente.getIdUsuario())) {
-            throw new IllegalArgumentException("O remetente não é um participante deste match.");
+        if (!participaDoMatch) {
+            throw new IllegalArgumentException("O usuário não participa deste match.");
         }
-
 
         Mensagem novaMensagem = new Mensagem(match, remetente, dados.texto());
         Mensagem mensagemSalva = mensagemRepository.save(novaMensagem);
@@ -49,15 +54,16 @@ public class MensagemService {
         return new DetalhesMensagemDTO(mensagemSalva);
     }
 
+    @Transactional
     public List<DetalhesMensagemDTO> listarMensagensDoMatch(Long idMatch) {
 
         if (!matchRepository.existsById(idMatch)) {
-            throw new IllegalArgumentException("Match não encontrado com o ID: " + idMatch);
+            throw new IllegalArgumentException("Match não encontrado. ID: " + idMatch);
         }
 
-
-        List<Mensagem> mensagens = mensagemRepository.findByMatchIdOrderByDataEnvioAsc(idMatch);
-        return mensagens.stream()
+        return mensagemRepository
+                .findByMatch_IdOrderByDataEnvioAsc(idMatch)
+                .stream()
                 .map(DetalhesMensagemDTO::new)
                 .collect(Collectors.toList());
     }

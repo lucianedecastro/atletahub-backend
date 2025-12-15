@@ -9,7 +9,6 @@ import java.util.List;
 @Repository
 public interface MensagemRepository extends JpaRepository<Mensagem, Long> {
 
-    List<Mensagem> findByMatchIdOrderByDataEnvioAsc(Long idMatch);
-
+    List<Mensagem> findByMatch_IdOrderByDataEnvioAsc(Long idMatch);
 
 }
