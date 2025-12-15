@@ -18,6 +18,14 @@ public class MensagemTraducaoController {
     @Autowired
     private MensagemTraducaoService mensagemTraducaoService;
 
+    /**
+     * Endpoint de tradução SOB DEMANDA.
+     *
+     * Este endpoint é acionado explicitamente pelo usuário
+     * (ex: botão "Traduzir" no chat).
+     *
+     * A tradução automática NÃO passa por aqui.
+     */
     @PostMapping
     public ResponseEntity<DetalhesMensagemTraducaoDTO> criarTraducao(
             @RequestBody @Valid DadosCriacaoMensagemTraducaoDTO dados,
