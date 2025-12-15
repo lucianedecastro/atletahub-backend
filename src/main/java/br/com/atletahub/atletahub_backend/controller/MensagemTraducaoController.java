@@ -18,16 +18,14 @@ public class MensagemTraducaoController {
     @Autowired
     private MensagemTraducaoService mensagemTraducaoService;
 
-    /**
-     * Cria (ou recupera) a tradução de uma mensagem para um idioma alvo
-     */
     @PostMapping
     public ResponseEntity<DetalhesMensagemTraducaoDTO> criarTraducao(
             @RequestBody @Valid DadosCriacaoMensagemTraducaoDTO dados,
             UriComponentsBuilder uriBuilder
     ) {
+
         DetalhesMensagemTraducaoDTO traducao =
-                mensagemTraducaoService.criarOuObterTraducao(dados);
+                mensagemTraducaoService.traduzirMensagem(dados);
 
         URI uri = uriBuilder
                 .path("/mensagens/traducoes/{id}")
@@ -37,4 +35,3 @@ public class MensagemTraducaoController {
         return ResponseEntity.created(uri).body(traducao);
     }
 }
-
