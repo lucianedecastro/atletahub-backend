@@ -33,10 +33,13 @@ public class AuthController {
 
     @Autowired
     private AuthenticationManager authenticationManager;
+
     @Autowired
     private UsuarioRepository usuarioRepository;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
+
     @Autowired
     private TokenService tokenService;
 
@@ -45,17 +48,13 @@ public class AuthController {
         logger.info("Tentativa de login para: {}", dados.email());
 
         try {
-
-            UsernamePasswordAuthenticationToken usernamePassword = new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
+            UsernamePasswordAuthenticationToken usernamePassword =
+                    new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
 
             Authentication auth = this.authenticationManager.authenticate(usernamePassword);
-
-
             Usuario usuarioLogado = (Usuario) auth.getPrincipal();
 
-
             String token = tokenService.generateToken(usuarioLogado);
-
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
@@ -73,12 +72,13 @@ public class AuthController {
 
         } catch (Exception e) {
             logger.error("Erro no login para {}: {}", dados.email(), e.getMessage());
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Erro no login: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Erro no login: " + e.getMessage());
         }
     }
 
-    @PostMapping("/registrar")
+    // 🔥 Alias em inglês para compatibilidade com o frontend
+    @PostMapping({"/registrar", "/register"})
     public ResponseEntity registrar(@RequestBody @Valid DadosRegistroUsuario dados) {
         logger.info("Tentativa de registro para: {}", dados.email());
 
@@ -88,23 +88,28 @@ public class AuthController {
         }
 
         try {
-
-            TipoUsuario tipoUsuarioEnum = TipoUsuario.valueOf(dados.tipoUsuario().toUpperCase());
+            TipoUsuario tipoUsuarioEnum =
+                    TipoUsuario.valueOf(dados.tipoUsuario().toUpperCase());
 
             String senhaCriptografada = passwordEncoder.encode(dados.senha());
 
+            Usuario novoUsuario =
+                    new Usuario(dados.nome(), dados.email(), senhaCriptografada, tipoUsuarioEnum);
 
-            Usuario novoUsuario = new Usuario(dados.nome(), dados.email(), senhaCriptografada, tipoUsuarioEnum);
             usuarioRepository.save(novoUsuario);
 
             logger.info("Registro bem-sucedido para: {}", dados.email());
             return ResponseEntity.ok("Usuário registrado com sucesso!");
+
         } catch (BadCredentialsException e) {
             logger.warn("Credenciais inválidas para: {}", dados.email());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciais inválidas"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Credenciais inválidas"));
+
         } catch (Exception e) {
-            logger.error("Erro no login para {}: {}", dados.email(), e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Erro interno ao realizar login"));
+            logger.error("Erro no registro para {}: {}", dados.email(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erro interno ao realizar registro"));
         }
     }
 }

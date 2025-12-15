@@ -25,33 +25,40 @@ public class SecurityFilter extends OncePerRequestFilter {
     private UsuarioRepository usuarioRepository;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-
-        String method = request.getMethod();
-
-        // Libera diretamente requisições do tipo OPTIONS (pré-flight CORS)
-        if ("OPTIONS".equalsIgnoreCase(method)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
         String token = recuperarToken(request);
+
         if (token != null) {
             try {
                 String email = tokenService.getSubject(token);
                 UserDetails usuario = usuarioRepository.findByEmail(email).orElse(null);
 
                 if (usuario != null) {
-                    var authentication = new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
+                    var authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    usuario,
+                                    null,
+                                    usuario.getAuthorities()
+                            );
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } catch (Exception ex) {
-                // Log pode ser adicionado aqui, se necessário
+                // Token inválido ou expirado → segue sem autenticar
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        // 🔥 Ignora completamente requisições OPTIONS (preflight CORS)
+        return "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
     private String recuperarToken(HttpServletRequest request) {
