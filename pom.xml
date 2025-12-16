@@ -35,11 +35,11 @@
         <lombok.version>1.18.32</lombok.version>
         <cloudinary.version>1.36.0</cloudinary.version>
 
-        <!-- ✅ AWS SDK v2 -->
+        <!-- AWS SDK v2 -->
         <aws.sdk.version>2.25.60</aws.sdk.version>
     </properties>
 
-    <!-- ✅ AWS SDK BOM -->
+    <!-- AWS SDK BOM -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -53,6 +53,8 @@
     </dependencyManagement>
 
     <dependencies>
+
+        <!-- Spring -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -104,6 +106,7 @@
             <version>${lombok.version}</version>
         </dependency>
 
+        <!-- Testes -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -116,6 +119,7 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Flyway -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
@@ -126,12 +130,14 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
+        <!-- OpenAPI -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc-openapi.version}</version>
         </dependency>
 
+        <!-- JWT -->
         <dependency>
             <groupId>com.auth0</groupId>
             <artifactId>java-jwt</artifactId>
@@ -144,16 +150,22 @@
             <version>${jjwt.version}</version>
         </dependency>
 
-        <!-- ✅ AWS Translate -->
+        <!-- AWS Translate -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>translate</artifactId>
         </dependency>
 
-        <!-- ✅ AWS Auth (IAM / Credenciais) -->
+        <!-- AWS Auth / IAM -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>auth</artifactId>
+        </dependency>
+
+        <!-- ✅ HTTP Client JDK (resolve UrlConnectionHttpClient) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
         </dependency>
 
     </dependencies>
@@ -167,6 +179,7 @@
         </resources>
 
         <plugins>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -195,7 +208,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
-                <configuration/>
             </plugin>
 
             <plugin>
@@ -217,6 +229,7 @@
                 <artifactId>flyway-maven-plugin</artifactId>
                 <version>${flyway-maven-plugin.version}</version>
             </plugin>
+
         </plugins>
     </build>
 
