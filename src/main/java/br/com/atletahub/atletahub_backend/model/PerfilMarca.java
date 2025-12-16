@@ -39,6 +39,10 @@ public class PerfilMarca {
     @Column(name = "redes_social")
     private String redesSocial;
 
+    // --- NOVO CAMPO: LOGO DA MARCA (Migration V4) ---
+    @Column(name = "logo_url")
+    private String logoUrl;
+
     public PerfilMarca(Long usuarioId) {
         this.usuarioId = usuarioId;
         this.produto = "";
@@ -46,6 +50,7 @@ public class PerfilMarca {
         this.atletasPatrocinados = "";
         this.tipoInvestimento = "";
         this.redesSocial = "";
+        this.logoUrl = ""; // Inicializa vazio
     }
 
     public void atualizar(DadosAtualizacaoPerfilMarca dados) {
@@ -54,5 +59,8 @@ public class PerfilMarca {
         if (dados.atletasPatrocinados() != null) this.atletasPatrocinados = dados.atletasPatrocinados();
         if (dados.tipoInvestimento() != null) this.tipoInvestimento = dados.tipoInvestimento();
         if (dados.redesSocial() != null) this.redesSocial = dados.redesSocial();
+
+        // Atualiza a logo se vier no DTO
+        if (dados.logoUrl() != null) this.logoUrl = dados.logoUrl();
     }
 }

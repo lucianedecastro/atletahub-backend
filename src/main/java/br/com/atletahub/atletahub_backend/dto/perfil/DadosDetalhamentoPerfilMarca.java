@@ -4,22 +4,25 @@ import br.com.atletahub.atletahub_backend.model.PerfilMarca;
 
 public record DadosDetalhamentoPerfilMarca(
         Long idPerfilMarca,
-        Long idUsuario, // Apenas o ID
+        Long idUsuario,
         String produto,
         Integer tempoMercado,
         String atletasPatrocinados,
         String tipoInvestimento,
-        String redesSocial
+        String redesSocial,
+        // --- NOVO CAMPO (Para o Frontend conseguir ler a imagem) ---
+        String logoUrl
 ) {
     public DadosDetalhamentoPerfilMarca(PerfilMarca perfil) {
         this(
                 perfil.getId_perfil_marca(),
-                perfil.getUsuarioId(), // CORREÇÃO: Pega o ID direto, pois não temos mais o objeto Usuario
+                perfil.getUsuarioId(),
                 perfil.getProduto(),
                 perfil.getTempoMercado(),
                 perfil.getAtletasPatrocinados(),
                 perfil.getTipoInvestimento(),
-                perfil.getRedesSocial()
+                perfil.getRedesSocial(),
+                perfil.getLogoUrl() // Mapeando o novo campo
         );
     }
 }
