@@ -18,9 +18,17 @@ public class VitrineController {
     @Autowired
     private VitrineService vitrineService;
 
+    // Endpoint para o próprio usuário (edição)
     @GetMapping("/me")
     public ResponseEntity<PerfilVitrine> getMinhaVitrine(@AuthenticationPrincipal Usuario usuario) {
         PerfilVitrine vitrine = vitrineService.buscarPorUsuarioId(usuario.getIdUsuario());
+        return ResponseEntity.ok(vitrine);
+    }
+
+    // Endpoint PÚBLICO (ou para logados) para ver vitrine de OUTROS usuários
+    @GetMapping("/{usuarioId}")
+    public ResponseEntity<PerfilVitrine> getVitrinePorUsuario(@PathVariable Long usuarioId) {
+        PerfilVitrine vitrine = vitrineService.buscarPorUsuarioId(usuarioId);
         return ResponseEntity.ok(vitrine);
     }
 
@@ -31,7 +39,6 @@ public class VitrineController {
             @AuthenticationPrincipal Usuario usuario
     ) {
         try {
-            // O usuário vem automaticamente do Token JWT graças ao @AuthenticationPrincipal
             PerfilVitrine vitrineAtualizada = vitrineService.adicionarMidia(usuario.getIdUsuario(), arquivo, tipo);
             return ResponseEntity.ok(vitrineAtualizada);
         } catch (IOException e) {

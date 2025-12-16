@@ -1,8 +1,8 @@
 package br.com.atletahub.atletahub_backend.service;
 
 import br.com.atletahub.atletahub_backend.dto.perfil.DadosAtualizacaoPerfilAtleta;
-import br.com.atletahub.atletahub_backend.model.TipoUsuario;
 import br.com.atletahub.atletahub_backend.model.PerfilAtleta;
+import br.com.atletahub.atletahub_backend.model.TipoUsuario;
 import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.repository.PerfilAtletaRepository;
 import br.com.atletahub.atletahub_backend.repository.UsuarioRepository;
@@ -23,11 +23,8 @@ public class PerfilAtletaService {
 
     @Transactional
     public void criarPerfilAtletaInicial(Usuario usuario) {
-        // Ajuste: Busca pelo ID direto (findByUsuarioId)
         Optional<PerfilAtleta> perfilExistente = perfilAtletaRepository.findByUsuarioId(usuario.getIdUsuario());
-
         if (usuario.getTipoUsuario() == TipoUsuario.ATLETA && perfilExistente.isEmpty()) {
-            // Ajuste: Passa apenas o ID Long para o construtor
             PerfilAtleta novoPerfil = new PerfilAtleta(usuario.getIdUsuario());
             perfilAtletaRepository.save(novoPerfil);
         }
@@ -35,22 +32,39 @@ public class PerfilAtletaService {
 
     @Transactional
     public PerfilAtleta atualizarPerfilAtleta(Long idUsuario, DadosAtualizacaoPerfilAtleta dados) {
+        // 1. Atualiza Perfil
         PerfilAtleta perfil = this.buscarPerfilAtletaPorIdUsuario(idUsuario);
         perfil.atualizar(dados);
+
+        // 2. Atualiza Usuário (Nome/Email)
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        boolean mudouUsuario = false;
+        if (dados.nome() != null && !dados.nome().isBlank()) {
+            usuario.setNome(dados.nome());
+            mudouUsuario = true;
+        }
+        if (dados.email() != null && !dados.email().isBlank()) {
+            usuario.setEmail(dados.email());
+            mudouUsuario = true;
+        }
+
+        if (mudouUsuario) {
+            usuarioRepository.save(usuario);
+        }
+
         return perfilAtletaRepository.save(perfil);
     }
 
     @Transactional
     public PerfilAtleta buscarPerfilAtletaPorIdUsuario(Long idUsuario) {
-        // Ajuste: Busca pelo ID direto
         Optional<PerfilAtleta> perfilOptional = perfilAtletaRepository.findByUsuarioId(idUsuario);
-
         if (perfilOptional.isPresent()) {
             return perfilOptional.get();
         } else {
             Usuario usuario = usuarioRepository.findById(idUsuario)
-                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado ao tentar criar perfil de atleta para o ID: " + idUsuario));
-
+                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
             PerfilAtleta novoPerfil = new PerfilAtleta(usuario.getIdUsuario());
             return perfilAtletaRepository.save(novoPerfil);
         }
