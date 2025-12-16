@@ -11,10 +11,10 @@ public record DadosCriacaoMensagemTraducaoDTO(
         String idiomaOrigem,
 
         @NotBlank
-        String idiomaDestino,
+        String idiomaDestino
 
-        @NotBlank
-        String textoTraduzido
+        // REMOVIDO: @NotBlank String textoTraduzido
+        // Este campo será gerado pelo serviço de tradução
+        // Não deve ser enviado pelo frontend
 ) {
 }
-
