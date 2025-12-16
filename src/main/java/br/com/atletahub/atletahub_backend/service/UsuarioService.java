@@ -63,9 +63,22 @@ public class UsuarioService implements UserDetailsService {
         }
 
         String senhaHash = passwordEncoder.encode(dados.senha());
-
         TipoUsuario tipoUsuarioEnum = TipoUsuario.valueOf(dados.tipoUsuario().toUpperCase());
-        Usuario novoUsuario = new Usuario(dados.nome(), dados.email(), senhaHash, tipoUsuarioEnum);
+
+        // --- LÓGICA DE IDIOMA (NOVO) ---
+        // Verifica se veio idioma no DTO. Se for nulo ou vazio, usa "pt".
+        String idiomaDefinido = (dados.idioma() != null && !dados.idioma().isBlank())
+                ? dados.idioma()
+                : "pt";
+
+        // --- CRIAÇÃO DO USUÁRIO COM IDIOMA ---
+        Usuario novoUsuario = new Usuario(
+                dados.nome(),
+                dados.email(),
+                senhaHash,
+                tipoUsuarioEnum,
+                idiomaDefinido // Passando o idioma para o novo construtor
+        );
 
         // 1. Salva no PostgreSQL (Login e Auth)
         Usuario usuarioSalvo = usuarioRepository.save(novoUsuario);
@@ -73,13 +86,8 @@ public class UsuarioService implements UserDetailsService {
 
         // 2. Cria os perfis dependendo do tipo
         if (usuarioSalvo.getTipoUsuario() == TipoUsuario.ATLETA) {
-
-            // A. Cria perfil básico no PostgreSQL (Altura, Peso, Posição)
             perfilAtletaService.criarPerfilAtletaInicial(usuarioSalvo);
-
-            // B. Cria a Vitrine no MongoDB (Fotos, Videos, Bio Longa)
             criarVitrineMongo(usuarioSalvo);
-
         } else if (usuarioSalvo.getTipoUsuario() == TipoUsuario.MARCA) {
             perfilMarcaService.criarPerfilMarcaInicial(usuarioSalvo);
         }
@@ -96,7 +104,6 @@ public class UsuarioService implements UserDetailsService {
             perfilVitrineRepository.save(vitrine);
             logger.info("Vitrine MongoDB criada para usuário ID: {}", usuario.getIdUsuario());
         } catch (Exception e) {
-            // Loga o erro mas não quebra o registro do usuário, pois a vitrine pode ser criada depois
             logger.error("Erro ao criar vitrine no MongoDB para usuário: " + usuario.getIdUsuario(), e);
         }
     }

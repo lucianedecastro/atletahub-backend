@@ -43,15 +43,18 @@ public class Usuario implements UserDetails {
     @NotNull
     private TipoUsuario tipoUsuario;
 
-    // --- REMOVIDO: Relacionamentos OneToOne (Causavam o erro e o ciclo infinito) ---
-    // O Hibernate não precisa mais gerenciar o perfil a partir do usuário.
-    // Se precisarmos do perfil, buscamos pelo Repository do Perfil usando o ID do usuário.
+    // --- NOVO CAMPO DE IDIOMA (V3 Migration) ---
+    @Column(name = "idioma_preferencia")
+    private String idiomaPreferencia;
 
-    public Usuario(String nome, String email, String senha, TipoUsuario tipoUsuario) {
+    // --- CONSTRUTOR ATUALIZADO ---
+    // Agora exige o idioma na criação
+    public Usuario(String nome, String email, String senha, TipoUsuario tipoUsuario, String idiomaPreferencia) {
         this.nome = nome;
         this.email = email;
         this.senha = senha;
         this.tipoUsuario = tipoUsuario;
+        this.idiomaPreferencia = idiomaPreferencia;
     }
 
     @Override
@@ -106,6 +109,7 @@ public class Usuario implements UserDetails {
                 ", nome='" + nome + '\'' +
                 ", email='" + email + '\'' +
                 ", tipoUsuario=" + tipoUsuario +
+                ", idiomaPreferencia='" + idiomaPreferencia + '\'' +
                 '}';
     }
 }

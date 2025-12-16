@@ -30,6 +30,10 @@ public record DadosRegistroUsuario(
         @NotBlank(message = "O estado é obrigatório")
         String estado,
 
+        // --- NOVO CAMPO: IDIOMA DE PREFERÊNCIA ---
+        // Ex: "pt", "en", "es". O Service trata o padrão se vier nulo.
+        String idioma,
+
         @AssertTrue(message = "É obrigatório concordar com os Termos de Uso e Política de Privacidade")
         Boolean concordoTermos
 
