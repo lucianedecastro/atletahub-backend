@@ -62,6 +62,10 @@ public class PerfilAtleta {
     @Column(name = "midiakit_url")
     private String midiakitUrl;
 
+    // Foto de perfil (Migration V6). Aparece no Dashboard, nos matches e no chat.
+    @Column(name = "foto_url", length = 500)
+    private String fotoUrl;
+
     // Construtor completo ajustado para receber Long usuarioId
     public PerfilAtleta(Long usuarioId, Integer idade, BigDecimal altura, BigDecimal peso, String modalidade, String competicoesTitulos, String redesSocial, String historico, String posicao, String observacoes, LocalDate dataNascimento, String telefoneContato, String midiakitUrl) {
         this.usuarioId = usuarioId;
@@ -103,6 +107,11 @@ public class PerfilAtleta {
         if (dados.dataNascimento() != null) this.dataNascimento = dados.dataNascimento();
         if (dados.telefoneContato() != null) this.telefoneContato = dados.telefoneContato();
         if (dados.midiakitUrl() != null) this.midiakitUrl = dados.midiakitUrl();
+    }
+
+    /** Define (ou remove, com null) a foto de perfil. Usado só pelo endpoint de foto. */
+    public void definirFoto(String url) {
+        this.fotoUrl = url;
     }
 
     public void atualizar(DadosAtualizacaoPerfilAtleta dados) {

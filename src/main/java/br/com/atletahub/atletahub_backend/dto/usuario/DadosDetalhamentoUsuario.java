@@ -28,7 +28,9 @@ public record DadosDetalhamentoUsuario(
         String estado,
         String posicao,
         String midiakitUrl,
-        String logoUrl
+        String logoUrl,
+        // Imagem única de perfil: foto do atleta ou logo da marca (o front usa só este campo)
+        String fotoUrl
 ) {
 
     /**
@@ -66,8 +68,17 @@ public record DadosDetalhamentoUsuario(
                 // Dados públicos que a tela de perfil de outro usuário precisa exibir
                 perfilAtleta != null ? perfilAtleta.getPosicao() : null,
                 perfilAtleta != null ? perfilAtleta.getMidiakitUrl() : null,
-                perfilMarca != null ? perfilMarca.getLogoUrl() : null
+                perfilMarca != null ? perfilMarca.getLogoUrl() : null,
+                imagemDePerfil(perfilAtleta, perfilMarca)
         );
+    }
+
+    /** Foto do atleta ou logo da marca; texto vazio vira null (e some do JSON). */
+    public static String imagemDePerfil(PerfilAtleta perfilAtleta, PerfilMarca perfilMarca) {
+        String url = null;
+        if (perfilAtleta != null) url = perfilAtleta.getFotoUrl();
+        else if (perfilMarca != null) url = perfilMarca.getLogoUrl();
+        return (url == null || url.isBlank()) ? null : url;
     }
 
     // Mantido por compatibilidade: SEM e-mail (padrão seguro).
