@@ -9,9 +9,11 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +41,8 @@ public class AuthController {
     // ==========================
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody @Valid DadosLogin dados) {
-        logger.info("Tentativa de login para: {}", dados.email());
+        // LGPD: o e-mail não vai mais para o log.
+        logger.debug("Tentativa de login recebida");
 
         try {
             UsernamePasswordAuthenticationToken authToken =
@@ -63,19 +66,26 @@ public class AuthController {
 
             return ResponseEntity.ok(response);
 
-        } catch (Exception e) {
-            logger.error("Erro no login", e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        } catch (BadCredentialsException e) {
+            // Credencial errada = 401 (antes devolvia 400).
+            logger.info("Login recusado: credenciais inválidas");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Email ou senha inválidos"));
+
+        } catch (Exception e) {
+            // Falha de infraestrutura (ex.: banco acordando) NÃO é "senha errada".
+            logger.error("Erro inesperado no login", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Não foi possível entrar agora. Tente novamente em instantes."));
         }
     }
 
     // ==========================
-    // REGISTRO (CORRETO)
+    // REGISTRO
     // ==========================
     @PostMapping({"/registrar", "/register"})
     public ResponseEntity<?> registrar(@RequestBody @Valid DadosRegistroUsuario dados) {
-        logger.info("Tentativa de registro para: {}", dados.email());
+        logger.info("Registro solicitado (tipo={})", dados.tipoUsuario());
 
         try {
             usuarioService.registrarUsuario(dados);
@@ -87,6 +97,12 @@ public class AuthController {
             logger.warn("Erro de validação no registro: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(Map.of("message", e.getMessage()));
+
+        } catch (DataIntegrityViolationException e) {
+            // Dois cadastros simultâneos com o mesmo e-mail: o banco barra o segundo.
+            logger.warn("Cadastro barrado por violação de unicidade");
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "Email já cadastrado."));
 
         } catch (Exception e) {
             logger.error("Erro interno no registro", e);

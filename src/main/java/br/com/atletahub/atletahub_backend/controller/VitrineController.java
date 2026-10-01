@@ -9,8 +9,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-
 @RestController
 @RequestMapping("/vitrine")
 public class VitrineController {
@@ -25,7 +23,7 @@ public class VitrineController {
         return ResponseEntity.ok(vitrine);
     }
 
-    // Endpoint PÚBLICO (ou para logados) para ver vitrine de OUTROS usuários
+    // Endpoint para usuários logados verem a vitrine de OUTROS usuários
     @GetMapping("/{usuarioId}")
     public ResponseEntity<PerfilVitrine> getVitrinePorUsuario(@PathVariable Long usuarioId) {
         PerfilVitrine vitrine = vitrineService.buscarPorUsuarioId(usuarioId);
@@ -38,11 +36,8 @@ public class VitrineController {
             @RequestParam("tipo") String tipo,
             @AuthenticationPrincipal Usuario usuario
     ) {
-        try {
-            PerfilVitrine vitrineAtualizada = vitrineService.adicionarMidia(usuario.getIdUsuario(), arquivo, tipo);
-            return ResponseEntity.ok(vitrineAtualizada);
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
-        }
+        // Validações e falhas do Cloudinary viram erros com mensagem (400/413/502) pelo GlobalExceptionHandler.
+        PerfilVitrine vitrineAtualizada = vitrineService.adicionarMidia(usuario.getIdUsuario(), arquivo, tipo);
+        return ResponseEntity.ok(vitrineAtualizada);
     }
 }

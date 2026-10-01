@@ -7,8 +7,10 @@ import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.repository.PerfilAtletaRepository;
 import br.com.atletahub.atletahub_backend.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -38,14 +40,19 @@ public class PerfilAtletaService {
 
         // 2. Atualiza Usuário (Nome/Email)
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         boolean mudouUsuario = false;
         if (dados.nome() != null && !dados.nome().isBlank()) {
-            usuario.setNome(dados.nome());
+            usuario.setNome(dados.nome().trim());
             mudouUsuario = true;
         }
-        if (dados.email() != null && !dados.email().isBlank()) {
+        if (dados.email() != null && !dados.email().isBlank()
+                && !dados.email().equals(usuario.getEmail())) {
+            // Antes qualquer e-mail era aceito: se já existisse em outra conta, estourava erro 500 no banco.
+            if (usuarioRepository.existsByEmailIgnoreCaseAndIdUsuarioNot(dados.email(), idUsuario)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está em uso.");
+            }
             usuario.setEmail(dados.email());
             mudouUsuario = true;
         }
@@ -64,7 +71,7 @@ public class PerfilAtletaService {
             return perfilOptional.get();
         } else {
             Usuario usuario = usuarioRepository.findById(idUsuario)
-                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
             PerfilAtleta novoPerfil = new PerfilAtleta(usuario.getIdUsuario());
             return perfilAtletaRepository.save(novoPerfil);
         }

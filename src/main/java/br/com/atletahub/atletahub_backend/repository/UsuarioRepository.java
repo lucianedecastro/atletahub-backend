@@ -13,6 +13,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     Optional<Usuario> findByEmail(String email);
 
-
     List<Usuario> findByTipoUsuario(TipoUsuario tipo);
+
+    // Usados para impedir e-mail duplicado (ignorando maiúsculas/minúsculas) no cadastro e na edição de perfil.
+    boolean existsByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCaseAndIdUsuarioNot(String email, Long idUsuario);
 }

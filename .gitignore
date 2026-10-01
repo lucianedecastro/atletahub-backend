@@ -1,11 +1,33 @@
+# Build
 target/
 !.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
+
+# IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
 .classpath
 .project
-.settings
-.idea
-*.iml
-.DS_Store
+.settings/
+.factorypath
+.apt_generated/
+.springBeans
+.sts4-cache/
+nbproject/
+nbbuild/
+nbdist/
+
+# Segredos e configuração local (NUNCA commitar)
 .env
-**/.env
+.env.*
+application-local.properties
+application-local.yml
+*.pem
+*.key
+
+# Sistema e logs
+.DS_Store
+Thumbs.db
+*.log

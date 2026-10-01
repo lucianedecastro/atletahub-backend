@@ -2,10 +2,12 @@ package br.com.atletahub.atletahub_backend.controller;
 
 import br.com.atletahub.atletahub_backend.dto.mensagem.DadosEnvioMensagemDTO;
 import br.com.atletahub.atletahub_backend.dto.mensagem.DetalhesMensagemDTO;
+import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.service.MensagemService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -22,10 +24,12 @@ public class MensagemController {
     @PostMapping
     public ResponseEntity<DetalhesMensagemDTO> enviarMensagem(
             @RequestBody @Valid DadosEnvioMensagemDTO dados,
+            @AuthenticationPrincipal Usuario usuarioLogado,
             UriComponentsBuilder uriBuilder
     ) {
-        DetalhesMensagemDTO mensagemSalva = mensagemService.enviarMensagem(dados);
-
+        // O remetente é SEMPRE o usuário do token (nunca um ID vindo do corpo da requisição).
+        DetalhesMensagemDTO mensagemSalva =
+                mensagemService.enviarMensagem(usuarioLogado.getIdUsuario(), dados);
 
         URI uri = uriBuilder.path("/mensagens/{id}").buildAndExpand(mensagemSalva.id()).toUri();
 
@@ -34,9 +38,12 @@ public class MensagemController {
 
     @GetMapping("/match/{idMatch}")
     public ResponseEntity<List<DetalhesMensagemDTO>> listarMensagensDoMatch(
-            @PathVariable Long idMatch
+            @PathVariable Long idMatch,
+            @AuthenticationPrincipal Usuario usuarioLogado
     ) {
-        List<DetalhesMensagemDTO> mensagens = mensagemService.listarMensagensDoMatch(idMatch);
+        // Só quem participa do match consegue ler a conversa.
+        List<DetalhesMensagemDTO> mensagens =
+                mensagemService.listarMensagensDoMatch(idMatch, usuarioLogado.getIdUsuario());
         return ResponseEntity.ok(mensagens);
     }
 }

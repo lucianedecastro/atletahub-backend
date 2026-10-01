@@ -10,12 +10,14 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -49,36 +51,41 @@ public class UsuarioService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        // Mensagem genérica: não devolve o e-mail digitado (LGPD / evita enumeração de contas).
         return usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Email não encontrado: " + email));
+                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
     }
 
     @Transactional
     public Usuario registrarUsuario(@Valid DadosRegistroUsuario dados) {
-        logger.info("Iniciando registro do usuário: {}", dados.email());
+        // LGPD: e-mail não vai para o log.
+        logger.info("Iniciando registro de usuário (tipo={})", dados.tipoUsuario());
 
-        if (usuarioRepository.findByEmail(dados.email()).isPresent()) {
-            logger.warn("Email já cadastrado: {}", dados.email());
+        // Ignora maiúsculas/minúsculas para não criar "Ana@x.com" e "ana@x.com" como contas diferentes.
+        if (usuarioRepository.existsByEmailIgnoreCase(dados.email())) {
+            logger.warn("Tentativa de cadastro com e-mail já existente");
             throw new IllegalArgumentException("Email já cadastrado.");
         }
 
         String senhaHash = passwordEncoder.encode(dados.senha());
         TipoUsuario tipoUsuarioEnum = TipoUsuario.valueOf(dados.tipoUsuario().toUpperCase());
 
-        // --- LÓGICA DE IDIOMA (NOVO) ---
-        // Verifica se veio idioma no DTO. Se for nulo ou vazio, usa "pt".
+        // Idioma: se não vier no DTO, usa "pt".
         String idiomaDefinido = (dados.idioma() != null && !dados.idioma().isBlank())
-                ? dados.idioma()
+                ? dados.idioma().trim()
                 : "pt";
 
-        // --- CRIAÇÃO DO USUÁRIO COM IDIOMA ---
         Usuario novoUsuario = new Usuario(
-                dados.nome(),
+                dados.nome().trim(),
                 dados.email(),
                 senhaHash,
                 tipoUsuarioEnum,
-                idiomaDefinido // Passando o idioma para o novo construtor
+                idiomaDefinido
         );
+
+        // Antes cidade/estado eram exigidos no cadastro, mas descartados. Agora são salvos.
+        novoUsuario.setCidade(dados.cidade().trim());
+        novoUsuario.setEstado(dados.estado().trim());
 
         // 1. Salva no PostgreSQL (Login e Auth)
         Usuario usuarioSalvo = usuarioRepository.save(novoUsuario);
@@ -92,7 +99,7 @@ public class UsuarioService implements UserDetailsService {
             perfilMarcaService.criarPerfilMarcaInicial(usuarioSalvo);
         }
 
-        logger.info("Registro do usuário {} concluído com sucesso.", dados.email());
+        logger.info("Registro do usuário {} concluído com sucesso.", usuarioSalvo.getIdUsuario());
         return usuarioSalvo;
     }
 
@@ -104,7 +111,8 @@ public class UsuarioService implements UserDetailsService {
             perfilVitrineRepository.save(vitrine);
             logger.info("Vitrine MongoDB criada para usuário ID: {}", usuario.getIdUsuario());
         } catch (Exception e) {
-            logger.error("Erro ao criar vitrine no MongoDB para usuário: " + usuario.getIdUsuario(), e);
+            // A vitrine também é criada sob demanda (VitrineService), então a falha aqui não derruba o cadastro.
+            logger.error("Erro ao criar vitrine no MongoDB para usuário ID: " + usuario.getIdUsuario(), e);
         }
     }
 
@@ -114,11 +122,26 @@ public class UsuarioService implements UserDetailsService {
 
     public Usuario buscarPorId(Long id) {
         return usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado!"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 
-    public List<Usuario> buscarPorTipo(String tipoUsuario) {
-        TipoUsuario tipo = TipoUsuario.valueOf(tipoUsuario.toUpperCase());
+    /**
+     * Lista usuários de um tipo. Só ATLETA e MARCA podem ser listados por quem não é ADMIN
+     * (antes qualquer logado conseguia listar os administradores).
+     */
+    public List<Usuario> buscarPorTipo(String tipoUsuario, Usuario solicitante) {
+        TipoUsuario tipo;
+        try {
+            tipo = TipoUsuario.valueOf(tipoUsuario.trim().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException("Tipo de usuário inválido.");
+        }
+
+        boolean solicitanteEhAdmin = solicitante != null && solicitante.getTipoUsuario() == TipoUsuario.ADMIN;
+        if (tipo == TipoUsuario.ADMIN && !solicitanteEhAdmin) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhum usuário encontrado.");
+        }
+
         return usuarioRepository.findByTipoUsuario(tipo);
     }
 }

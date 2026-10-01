@@ -23,23 +23,31 @@ public record DadosDetalhamentoUsuario(
         String atletasPatrocinados,
         String tipoInvestimento,
         BigDecimal altura,
-        BigDecimal peso
+        BigDecimal peso,
+        String cidade,
+        String estado,
+        String posicao,
+        String midiakitUrl,
+        String logoUrl
 ) {
 
-    // ALTERAÇÃO: Agora o construtor recebe os objetos separadamente.
-    // Quem chamar esse DTO (no Controller) terá que buscar os perfis antes.
-    public DadosDetalhamentoUsuario(Usuario usuario, PerfilAtleta perfilAtleta, PerfilMarca perfilMarca) {
+    /**
+     * Monta o DTO público/privado.
+     * O e-mail só vai no JSON quando {@code incluirEmail} é true (o próprio usuário ou um ADMIN).
+     * Para os demais usuários o campo fica null e, por causa do @JsonInclude, nem aparece.
+     */
+    public DadosDetalhamentoUsuario(Usuario usuario, PerfilAtleta perfilAtleta, PerfilMarca perfilMarca, boolean incluirEmail) {
         this(
                 usuario.getIdUsuario(),
                 usuario.getNome(),
-                usuario.getEmail(),
+                incluirEmail ? usuario.getEmail() : null,
                 usuario.getTipoUsuario().toString(),
 
                 // Mapeia dados de ATLETA se o objeto não for nulo
                 perfilAtleta != null ? perfilAtleta.getIdade() : null,
                 perfilAtleta != null ? perfilAtleta.getModalidade() : null,
                 perfilAtleta != null ? perfilAtleta.getCompeticoesTitulos() : null,
-                perfilAtleta != null ? perfilAtleta.getRedesSocial() : (perfilMarca != null ? perfilMarca.getRedesSocial() : null), // Redes sociais pode vir de ambos
+                perfilAtleta != null ? perfilAtleta.getRedesSocial() : (perfilMarca != null ? perfilMarca.getRedesSocial() : null),
                 perfilAtleta != null ? perfilAtleta.getHistorico() : null,
 
                 // Mapeia dados de MARCA se o objeto não for nulo
@@ -50,7 +58,20 @@ public record DadosDetalhamentoUsuario(
 
                 // Demais dados de atleta
                 perfilAtleta != null ? perfilAtleta.getAltura() : null,
-                perfilAtleta != null ? perfilAtleta.getPeso() : null
+                perfilAtleta != null ? perfilAtleta.getPeso() : null,
+
+                usuario.getCidade(),
+                usuario.getEstado(),
+
+                // Dados públicos que a tela de perfil de outro usuário precisa exibir
+                perfilAtleta != null ? perfilAtleta.getPosicao() : null,
+                perfilAtleta != null ? perfilAtleta.getMidiakitUrl() : null,
+                perfilMarca != null ? perfilMarca.getLogoUrl() : null
         );
+    }
+
+    // Mantido por compatibilidade: SEM e-mail (padrão seguro).
+    public DadosDetalhamentoUsuario(Usuario usuario, PerfilAtleta perfilAtleta, PerfilMarca perfilMarca) {
+        this(usuario, perfilAtleta, perfilMarca, false);
     }
 }

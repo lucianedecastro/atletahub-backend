@@ -2,10 +2,12 @@ package br.com.atletahub.atletahub_backend.controller;
 
 import br.com.atletahub.atletahub_backend.dto.mensagem.DadosCriacaoMensagemTraducaoDTO;
 import br.com.atletahub.atletahub_backend.dto.mensagem.DetalhesMensagemTraducaoDTO;
+import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.service.MensagemTraducaoService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -24,16 +26,18 @@ public class MensagemTraducaoController {
      * Este endpoint é acionado explicitamente pelo usuário
      * (ex: botão "Traduzir" no chat).
      *
-     * A tradução automática NÃO passa por aqui.
+     * Só quem participa do match da mensagem pode traduzi-la.
+     * A tradução automática NÃO passa por aqui (ver TraducaoAutomaticaListener).
      */
     @PostMapping
     public ResponseEntity<DetalhesMensagemTraducaoDTO> criarTraducao(
             @RequestBody @Valid DadosCriacaoMensagemTraducaoDTO dados,
+            @AuthenticationPrincipal Usuario usuarioLogado,
             UriComponentsBuilder uriBuilder
     ) {
 
         DetalhesMensagemTraducaoDTO traducao =
-                mensagemTraducaoService.traduzirMensagem(dados);
+                mensagemTraducaoService.traduzirMensagem(usuarioLogado.getIdUsuario(), dados);
 
         URI uri = uriBuilder
                 .path("/mensagens/traducoes/{id}")

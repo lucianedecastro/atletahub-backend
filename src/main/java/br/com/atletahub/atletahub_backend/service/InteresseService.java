@@ -4,17 +4,25 @@ import br.com.atletahub.atletahub_backend.dto.interesse.DadosCadastroInteresse;
 import br.com.atletahub.atletahub_backend.enums.TipoInteresse;
 import br.com.atletahub.atletahub_backend.model.Interesse;
 import br.com.atletahub.atletahub_backend.model.Match;
+import br.com.atletahub.atletahub_backend.model.TipoUsuario;
 import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.repository.InteresseRepository;
 import br.com.atletahub.atletahub_backend.repository.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class InteresseService {
+
+    private static final Logger logger = LoggerFactory.getLogger(InteresseService.class);
 
     @Autowired
     private InteresseRepository interesseRepository;
@@ -28,47 +36,68 @@ public class InteresseService {
     @Transactional
     public Interesse registrarInteresse(Long idOrigem, DadosCadastroInteresse dados) {
         Usuario origem = usuarioRepository.findById(idOrigem)
-                .orElseThrow(() -> new RuntimeException("Usuário de origem não encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário de origem não encontrado."));
 
         Usuario destino = usuarioRepository.findById(dados.idDestino())
-                .orElseThrow(() -> new RuntimeException("Usuário de destino não encontrado."));
-
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário de destino não encontrado."));
 
         if (origem.getIdUsuario().equals(destino.getIdUsuario())) {
-            throw new IllegalArgumentException("Não é permitido curtir a si mesmo.");
+            throw new IllegalArgumentException("Não é permitido demonstrar interesse em si mesmo.");
         }
 
+        // A plataforma conecta ATLETAS com MARCAS: atleta↔atleta e marca↔marca não fazem sentido.
+        validarParAtletaMarca(origem, destino);
 
-        if (interesseRepository.findByOrigem_IdUsuarioAndDestino_IdUsuario(origem.getIdUsuario(), destino.getIdUsuario()).isPresent()) {
-            throw new IllegalArgumentException("Você já expressou interesse neste usuário.");
+        Optional<Interesse> existente = interesseRepository
+                .findByOrigem_IdUsuarioAndDestino_IdUsuario(origem.getIdUsuario(), destino.getIdUsuario());
+
+        Interesse interesseSalvo;
+
+        if (existente.isPresent()) {
+            Interesse atual = existente.get();
+
+            // Único caminho permitido sobre um interesse existente: subir de CURTIR para SUPER_CURTIR.
+            boolean upgrade = atual.getTipoInteresse() == TipoInteresse.CURTIR
+                    && dados.tipoInteresse() == TipoInteresse.SUPER_CURTIR;
+
+            if (!upgrade) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já demonstrou interesse neste usuário.");
+            }
+
+            atual.atualizar(TipoInteresse.SUPER_CURTIR);
+            interesseSalvo = interesseRepository.save(atual);
+        } else {
+            interesseSalvo = interesseRepository.save(new Interesse(origem, destino, dados.tipoInteresse()));
         }
 
-
-        Interesse novoInteresse = new Interesse(origem, destino, dados.tipoInteresse());
-        Interesse interesseSalvo = interesseRepository.save(novoInteresse);
-
-
-        Match matchGerado = matchService.verificarEGerarMatch(origem, destino, dados.tipoInteresse());
-
+        Match matchGerado = matchService.verificarEGerarMatch(origem, destino, interesseSalvo.getTipoInteresse());
         if (matchGerado != null) {
-            System.out.println("Match gerado com sucesso! ID: " + matchGerado.getId());
+            logger.info("Match gerado (id={}, tipo={})", matchGerado.getId(), matchGerado.getTipoMatch());
         }
 
         return interesseSalvo;
     }
 
+    private void validarParAtletaMarca(Usuario origem, Usuario destino) {
+        boolean origemAtleta = origem.getTipoUsuario() == TipoUsuario.ATLETA;
+        boolean origemMarca = origem.getTipoUsuario() == TipoUsuario.MARCA;
+        boolean destinoAtleta = destino.getTipoUsuario() == TipoUsuario.ATLETA;
+        boolean destinoMarca = destino.getTipoUsuario() == TipoUsuario.MARCA;
 
+        boolean par = (origemAtleta && destinoMarca) || (origemMarca && destinoAtleta);
+        if (!par) {
+            throw new IllegalArgumentException("Atletas só podem demonstrar interesse em marcas, e marcas em atletas.");
+        }
+    }
 
     public Interesse buscarInteressePorId(Long idInteresse) {
         return interesseRepository.findById(idInteresse)
-                .orElseThrow(() -> new RuntimeException("Interesse não encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Interesse não encontrado."));
     }
-
 
     public List<Interesse> listarInteressesEnviados(Long idOrigem) {
         return interesseRepository.findByOrigem_IdUsuario(idOrigem);
     }
-
 
     public List<Interesse> listarInteressesRecebidos(Long idDestino) {
         return interesseRepository.findByDestino_IdUsuario(idDestino);

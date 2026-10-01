@@ -45,6 +45,13 @@ public class Usuario implements UserDetails {
     @Column(name = "idioma_preferencia")
     private String idiomaPreferencia;
 
+    // --- LOCALIZAÇÃO (colunas já existem desde a V1; faltava mapear na entidade) ---
+    @Column(name = "cidade", length = 100)
+    private String cidade;
+
+    @Column(name = "estado", length = 100)
+    private String estado;
+
     // --- CONSTRUTOR ATUALIZADO ---
     // Agora exige o idioma na criação
     public Usuario(String nome, String email, String senha, TipoUsuario tipoUsuario, String idiomaPreferencia) {
@@ -100,12 +107,11 @@ public class Usuario implements UserDetails {
         return true;
     }
 
+    // E-mail fora do toString (LGPD: evita dado pessoal em log).
     @Override
     public String toString() {
         return "Usuario{" +
                 "idUsuario=" + idUsuario +
-                ", nome='" + nome + '\'' +
-                ", email='" + email + '\'' +
                 ", tipoUsuario=" + tipoUsuario +
                 ", idiomaPreferencia='" + idiomaPreferencia + '\'' +
                 '}';

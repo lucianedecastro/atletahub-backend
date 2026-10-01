@@ -1,6 +1,5 @@
 package br.com.atletahub.atletahub_backend.service;
 
-import br.com.atletahub.atletahub_backend.dto.mensagem.DadosCriacaoMensagemTraducaoDTO;
 import br.com.atletahub.atletahub_backend.dto.mensagem.DadosEnvioMensagemDTO;
 import br.com.atletahub.atletahub_backend.dto.mensagem.DetalhesMensagemDTO;
 import br.com.atletahub.atletahub_backend.model.Match;
@@ -10,11 +9,14 @@ import br.com.atletahub.atletahub_backend.repository.MatchRepository;
 import br.com.atletahub.atletahub_backend.repository.MensagemRepository;
 import br.com.atletahub.atletahub_backend.repository.UsuarioRepository;
 import br.com.atletahub.atletahub_backend.traducao.config.TraducaoProperties;
-import jakarta.transaction.Transactional;
+import br.com.atletahub.atletahub_backend.traducao.event.MensagemEnviadaEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,98 +26,97 @@ public class MensagemService {
 
     private static final Logger logger = LoggerFactory.getLogger(MensagemService.class);
 
-    @Autowired
-    private MensagemRepository mensagemRepository;
+    private final MensagemRepository mensagemRepository;
+    private final MatchRepository matchRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final TraducaoProperties traducaoProperties;
+    private final ApplicationEventPublisher eventPublisher;
 
-    @Autowired
-    private MatchRepository matchRepository;
+    public MensagemService(MensagemRepository mensagemRepository,
+                           MatchRepository matchRepository,
+                           UsuarioRepository usuarioRepository,
+                           TraducaoProperties traducaoProperties,
+                           ApplicationEventPublisher eventPublisher) {
+        this.mensagemRepository = mensagemRepository;
+        this.matchRepository = matchRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.traducaoProperties = traducaoProperties;
+        this.eventPublisher = eventPublisher;
+    }
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
-    private MensagemTraducaoService mensagemTraducaoService;
-
-    @Autowired
-    private TraducaoProperties traducaoProperties;
-
+    /**
+     * @param idRemetente ID do usuário autenticado (vem do token, nunca do corpo da requisição).
+     */
     @Transactional
-    public DetalhesMensagemDTO enviarMensagem(DadosEnvioMensagemDTO dados) {
+    public DetalhesMensagemDTO enviarMensagem(Long idRemetente, DadosEnvioMensagemDTO dados) {
 
-        // 1. Validações Básicas
-        Match match = matchRepository.findById(dados.idMatch())
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Match não encontrado. ID: " + dados.idMatch())
-                );
+        // 1. O match precisa existir E o usuário precisa participar dele.
+        Match match = buscarMatchDoParticipante(dados.idMatch(), idRemetente);
 
-        Usuario remetente = usuarioRepository.findById(dados.idRemetente())
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Usuário remetente não encontrado. ID: " + dados.idRemetente())
-                );
+        Usuario remetente = usuarioRepository.findById(idRemetente)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não encontrado."));
 
-        // 2. Verifica participação no Match e descobre o Destinatário
-        Usuario destinatario;
-        if (match.getUsuarioA().getIdUsuario().equals(remetente.getIdUsuario())) {
-            destinatario = match.getUsuarioB();
-        } else if (match.getUsuarioB().getIdUsuario().equals(remetente.getIdUsuario())) {
-            destinatario = match.getUsuarioA();
-        } else {
-            throw new IllegalArgumentException("O usuário não participa deste match.");
-        }
+        // 2. Descobre o destinatário
+        Usuario destinatario = idRemetente.equals(match.getIdUsuarioA())
+                ? match.getUsuarioB()
+                : match.getUsuarioA();
 
-        // 3. Salva a Mensagem Original
-        Mensagem novaMensagem = new Mensagem(match, remetente, dados.texto());
-        Mensagem mensagemSalva = mensagemRepository.save(novaMensagem);
+        // 3. Salva a mensagem original
+        Mensagem mensagemSalva = mensagemRepository.save(new Mensagem(match, remetente, dados.texto()));
 
-        // 4. 🌍 Fluxo de Tradução Automática
-        try {
-            processarTraducaoAutomatica(mensagemSalva, remetente, destinatario);
-        } catch (Exception e) {
-            // Loga o erro mas NÃO trava o envio da mensagem original
-            logger.error("Erro ao processar tradução automática: {}", e.getMessage());
-        }
+        // 4. Tradução automática: NÃO roda aqui dentro.
+        //    Só avisamos que a mensagem foi enviada; a tradução acontece depois do commit,
+        //    em outra thread (ver TraducaoAutomaticaListener). Assim uma falha da AWS
+        //    nunca derruba nem trava o envio da mensagem.
+        publicarTraducaoAutomatica(mensagemSalva, remetente, destinatario);
 
         return new DetalhesMensagemDTO(mensagemSalva);
     }
 
-    private void processarTraducaoAutomatica(Mensagem mensagem, Usuario remetente, Usuario destinatario) {
-        // Verifica se a tradução automática está ligada no properties
+    private void publicarTraducaoAutomatica(Mensagem mensagem, Usuario remetente, Usuario destinatario) {
         if (!traducaoProperties.isAutomatica()) {
             return;
         }
 
-        String langOrigem = remetente.getIdiomaPreferencia();
-        String langDestino = destinatario.getIdiomaPreferencia();
-
-        // Garante que não sejam nulos (fallback para 'pt' se necessário, ou ignora)
-        if (langOrigem == null) langOrigem = "pt";
-        if (langDestino == null) langDestino = "pt";
+        String langOrigem = remetente.getIdiomaPreferencia() != null ? remetente.getIdiomaPreferencia() : "pt";
+        String langDestino = destinatario.getIdiomaPreferencia() != null ? destinatario.getIdiomaPreferencia() : "pt";
 
         // Só traduz se os idiomas forem diferentes
         if (!langOrigem.equalsIgnoreCase(langDestino)) {
-            logger.info("Traduzindo mensagem ID {} de {} para {}", mensagem.getId(), langOrigem, langDestino);
-
-            DadosCriacaoMensagemTraducaoDTO dadosTraducao = new DadosCriacaoMensagemTraducaoDTO(
-                    mensagem.getId(),
-                    langOrigem,
-                    langDestino
-            );
-
-            mensagemTraducaoService.traduzirMensagem(dadosTraducao);
+            logger.info("Tradução automática agendada: mensagem {} de {} para {}",
+                    mensagem.getId(), langOrigem, langDestino);
+            eventPublisher.publishEvent(new MensagemEnviadaEvent(mensagem.getId(), langOrigem, langDestino));
         }
     }
 
-    @Transactional
-    public List<DetalhesMensagemDTO> listarMensagensDoMatch(Long idMatch) {
+    /**
+     * @param idUsuario ID do usuário autenticado: só quem participa do match pode ler a conversa.
+     */
+    @Transactional(readOnly = true)
+    public List<DetalhesMensagemDTO> listarMensagensDoMatch(Long idMatch, Long idUsuario) {
 
-        if (!matchRepository.existsById(idMatch)) {
-            throw new IllegalArgumentException("Match não encontrado. ID: " + idMatch);
-        }
+        buscarMatchDoParticipante(idMatch, idUsuario);
 
         return mensagemRepository
                 .findByMatch_IdOrderByDataEnvioAsc(idMatch)
                 .stream()
                 .map(DetalhesMensagemDTO::new)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Devolve o match se ele existe e o usuário participa dele.
+     * Nos dois casos de falha a resposta é 404 (e não 403): não revela se o match existe
+     * e evita que o front, que desloga o usuário em qualquer 403, derrube a sessão.
+     */
+    private Match buscarMatchDoParticipante(Long idMatch, Long idUsuario) {
+        Match match = matchRepository.findById(idMatch)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Match não encontrado."));
+
+        boolean participa = idUsuario.equals(match.getIdUsuarioA()) || idUsuario.equals(match.getIdUsuarioB());
+        if (!participa) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Match não encontrado.");
+        }
+        return match;
     }
 }
