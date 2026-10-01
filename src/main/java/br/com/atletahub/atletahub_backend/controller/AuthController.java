@@ -2,6 +2,7 @@ package br.com.atletahub.atletahub_backend.controller;
 
 import br.com.atletahub.atletahub_backend.dto.usuario.DadosLogin;
 import br.com.atletahub.atletahub_backend.dto.usuario.DadosRegistroUsuario;
+import br.com.atletahub.atletahub_backend.model.TipoUsuario;
 import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.service.TokenService;
 import br.com.atletahub.atletahub_backend.service.UsuarioService;
@@ -61,6 +62,10 @@ public class AuthController {
             user.put("email", usuario.getEmail());
             user.put("name", usuario.getNome());
             user.put("userType", usuario.getTipoUsuario().name().toLowerCase());
+            // Idioma da conta (o chat traduz para ele) e aviso para contas antigas sem data de nascimento.
+            user.put("idioma", usuario.getIdiomaPreferencia() != null ? usuario.getIdiomaPreferencia() : "pt");
+            user.put("precisaInformarNascimento",
+                    usuario.getTipoUsuario() != TipoUsuario.ADMIN && usuario.getDataNascimento() == null);
 
             response.put("user", user);
 

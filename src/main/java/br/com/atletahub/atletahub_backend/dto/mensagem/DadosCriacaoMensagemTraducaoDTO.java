@@ -1,20 +1,18 @@
 package br.com.atletahub.atletahub_backend.dto.mensagem;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record DadosCriacaoMensagemTraducaoDTO(
         @NotNull
         Long idMensagem,
 
-        @NotBlank
+        // OPCIONAIS. O servidor detecta o idioma de origem sozinho (AWS "auto") e traduz para o
+        // idioma de preferência de quem pediu. Os campos continuam aceitos só para não quebrar
+        // versões antigas do app, que ainda os enviam.
         String idiomaOrigem,
 
-        @NotBlank
         String idiomaDestino
 
-        // REMOVIDO: @NotBlank String textoTraduzido
-        // Este campo será gerado pelo serviço de tradução
-        // Não deve ser enviado pelo frontend
+        // Não existe campo de texto traduzido: ele é gerado pelo serviço de tradução.
 ) {
 }

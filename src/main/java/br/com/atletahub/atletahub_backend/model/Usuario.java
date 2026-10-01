@@ -9,6 +9,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
@@ -51,6 +53,17 @@ public class Usuario implements UserDetails {
 
     @Column(name = "estado", length = 100)
     private String estado;
+
+    // --- IDADE MÍNIMA E ACEITE DOS TERMOS (V7 Migration) ---
+    // Nula só em contas criadas antes da V7 (o app pede a data no próximo acesso).
+    @Column(name = "data_nascimento")
+    private LocalDate dataNascimento;
+
+    @Column(name = "termos_aceitos_em")
+    private Instant termosAceitosEm;
+
+    @Column(name = "termos_versao", length = 20)
+    private String termosVersao;
 
     // --- CONSTRUTOR ATUALIZADO ---
     // Agora exige o idioma na criação

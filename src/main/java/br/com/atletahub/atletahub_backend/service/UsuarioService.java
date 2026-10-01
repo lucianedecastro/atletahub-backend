@@ -19,12 +19,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 public class UsuarioService implements UserDetailsService {
 
     private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
+
+    // Idade mínima para ter conta. Menores só poderão entrar no futuro, via perfil administrado por responsável.
+    public static final int IDADE_MINIMA = 18;
+
+    // Versão dos Termos/Política aceitos no cadastro. Mude quando os textos mudarem.
+    public static final String VERSAO_TERMOS = "2026-10";
+
+    private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
@@ -67,6 +79,9 @@ public class UsuarioService implements UserDetailsService {
             throw new IllegalArgumentException("Email já cadastrado.");
         }
 
+        // Regra de idade validada ANTES de gravar qualquer coisa (a data não vai para o log).
+        validarMaioridade(dados.dataNascimento());
+
         String senhaHash = passwordEncoder.encode(dados.senha());
         TipoUsuario tipoUsuarioEnum = TipoUsuario.valueOf(dados.tipoUsuario().toUpperCase());
 
@@ -87,6 +102,11 @@ public class UsuarioService implements UserDetailsService {
         novoUsuario.setCidade(dados.cidade().trim());
         novoUsuario.setEstado(dados.estado().trim());
 
+        // Maioridade e aceite dos termos (data e versão) ficam registrados na conta.
+        novoUsuario.setDataNascimento(dados.dataNascimento());
+        novoUsuario.setTermosAceitosEm(Instant.now());
+        novoUsuario.setTermosVersao(VERSAO_TERMOS);
+
         // 1. Salva no PostgreSQL (Login e Auth)
         Usuario usuarioSalvo = usuarioRepository.save(novoUsuario);
         logger.info("Usuário salvo no Postgres com ID: {}", usuarioSalvo.getIdUsuario());
@@ -101,6 +121,49 @@ public class UsuarioService implements UserDetailsService {
 
         logger.info("Registro do usuário {} concluído com sucesso.", usuarioSalvo.getIdUsuario());
         return usuarioSalvo;
+    }
+
+    /**
+     * Rejeita datas impossíveis e menores de {@link #IDADE_MINIMA} anos.
+     * Lança IllegalArgumentException (vira 400 com a mensagem para a pessoa).
+     */
+    public static void validarMaioridade(LocalDate nascimento) {
+        if (nascimento == null) {
+            throw new IllegalArgumentException("A data de nascimento é obrigatória.");
+        }
+        LocalDate hoje = LocalDate.now(FUSO);
+        if (nascimento.isAfter(hoje) || nascimento.getYear() < 1900) {
+            throw new IllegalArgumentException("Data de nascimento inválida.");
+        }
+        if (Period.between(nascimento, hoje).getYears() < IDADE_MINIMA) {
+            throw new IllegalArgumentException(
+                    "É preciso ter " + IDADE_MINIMA + " anos ou mais para criar uma conta no AtletaHub.");
+        }
+    }
+
+    /**
+     * Contas criadas antes da V7 informam a data aqui, no primeiro acesso.
+     * A data não pode ser trocada depois (evita "corrigir" a idade para passar na regra).
+     * Devolve 422 (e não 401/403, que deslogariam o usuário no front).
+     */
+    @Transactional
+    public void informarDataNascimento(Long idUsuario, LocalDate nascimento) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        if (usuario.getDataNascimento() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A data de nascimento já foi informada.");
+        }
+
+        try {
+            validarMaioridade(nascimento);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage());
+        }
+
+        usuario.setDataNascimento(nascimento);
+        usuarioRepository.save(usuario);
+        logger.info("Data de nascimento registrada para o usuário ID: {}", idUsuario);
     }
 
     // Método auxiliar para criar o documento no Mongo

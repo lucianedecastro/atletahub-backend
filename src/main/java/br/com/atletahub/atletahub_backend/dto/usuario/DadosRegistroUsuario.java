@@ -3,8 +3,12 @@ package br.com.atletahub.atletahub_backend.dto.usuario;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
+import java.time.LocalDate;
 
 public record DadosRegistroUsuario(
 
@@ -45,8 +49,19 @@ public record DadosRegistroUsuario(
         @Size(max = 10, message = "Idioma inválido")
         String idioma,
 
-        @AssertTrue(message = "É obrigatório concordar com os Termos de Uso e Política de Privacidade")
-        Boolean concordoTermos
+        // Formato AAAA-MM-DD. A conta só é criada para maiores de 18 anos (regra aplicada no UsuarioService).
+        @NotNull(message = "A data de nascimento é obrigatória")
+        @Past(message = "Data de nascimento inválida")
+        LocalDate dataNascimento,
+
+        // Dois aceites separados, como pede a LGPD (consentimento específico).
+        @NotNull(message = "É obrigatório concordar com os Termos de Uso")
+        @AssertTrue(message = "É obrigatório concordar com os Termos de Uso")
+        Boolean concordoTermos,
+
+        @NotNull(message = "É obrigatório concordar com a Política de Privacidade")
+        @AssertTrue(message = "É obrigatório concordar com a Política de Privacidade")
+        Boolean concordoPrivacidade
 
 ) {
 }
