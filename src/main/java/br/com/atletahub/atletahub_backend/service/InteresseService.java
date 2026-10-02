@@ -18,6 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class InteresseService {
@@ -33,6 +35,9 @@ public class InteresseService {
     @Autowired
     private MatchService matchService;
 
+    @Autowired
+    private BloqueioService bloqueioService;
+
     @Transactional
     public Interesse registrarInteresse(Long idOrigem, DadosCadastroInteresse dados) {
         Usuario origem = usuarioRepository.findById(idOrigem)
@@ -43,6 +48,11 @@ public class InteresseService {
 
         if (origem.getIdUsuario().equals(destino.getIdUsuario())) {
             throw new IllegalArgumentException("Não é permitido demonstrar interesse em si mesmo.");
+        }
+
+        // Bloqueio em qualquer direção: responde como se a pessoa não existisse (não revela o bloqueio).
+        if (bloqueioService.existeEntre(origem.getIdUsuario(), destino.getIdUsuario())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário de destino não encontrado.");
         }
 
         // A plataforma conecta ATLETAS com MARCAS: atleta↔atleta e marca↔marca não fazem sentido.
@@ -95,11 +105,19 @@ public class InteresseService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Interesse não encontrado."));
     }
 
+    @Transactional(readOnly = true)
     public List<Interesse> listarInteressesEnviados(Long idOrigem) {
-        return interesseRepository.findByOrigem_IdUsuario(idOrigem);
+        Set<Long> ocultos = bloqueioService.idsComBloqueio(idOrigem);
+        return interesseRepository.findByOrigem_IdUsuario(idOrigem).stream()
+                .filter(i -> !ocultos.contains(i.getDestino().getIdUsuario()))
+                .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<Interesse> listarInteressesRecebidos(Long idDestino) {
-        return interesseRepository.findByDestino_IdUsuario(idDestino);
+        Set<Long> ocultos = bloqueioService.idsComBloqueio(idDestino);
+        return interesseRepository.findByDestino_IdUsuario(idDestino).stream()
+                .filter(i -> !ocultos.contains(i.getOrigem().getIdUsuario()))
+                .collect(Collectors.toList());
     }
 }

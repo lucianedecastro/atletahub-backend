@@ -7,7 +7,10 @@ import br.com.atletahub.atletahub_backend.model.TipoUsuario;
 import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.repository.PerfilAtletaRepository;
 import br.com.atletahub.atletahub_backend.repository.PerfilMarcaRepository;
+import br.com.atletahub.atletahub_backend.service.BloqueioService;
 import br.com.atletahub.atletahub_backend.service.UsuarioService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,6 +35,9 @@ public class UsuarioController {
     @Autowired
     private PerfilMarcaRepository perfilMarcaRepository;
 
+    @Autowired
+    private BloqueioService bloqueioService;
+
     // Lista completa: só ADMIN (regra no SecurityConfig). Já com e-mail, pois é visão administrativa.
     @GetMapping
     public ResponseEntity<List<DadosDetalhamentoUsuario>> listarTodos(@AuthenticationPrincipal Usuario logado) {
@@ -51,6 +57,12 @@ public class UsuarioController {
     public ResponseEntity<DadosDetalhamentoUsuario> buscarPorId(
             @PathVariable Long id,
             @AuthenticationPrincipal Usuario logado) {
+
+        // Quem foi bloqueado não vê o perfil de quem bloqueou (resposta igual à de perfil inexistente).
+        if (logado != null && logado.getTipoUsuario() != TipoUsuario.ADMIN
+                && bloqueioService.fuiBloqueadoPor(id, logado.getIdUsuario())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
+        }
 
         Usuario usuario = usuarioService.buscarPorId(id);
         return ResponseEntity.ok(converterLista(List.of(usuario), logado).get(0));

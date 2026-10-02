@@ -2,7 +2,10 @@ package br.com.atletahub.atletahub_backend.controller;
 
 import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.model.mongo.PerfilVitrine;
+import br.com.atletahub.atletahub_backend.service.BloqueioService;
 import br.com.atletahub.atletahub_backend.service.VitrineService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,6 +19,9 @@ public class VitrineController {
     @Autowired
     private VitrineService vitrineService;
 
+    @Autowired
+    private BloqueioService bloqueioService;
+
     // Endpoint para o próprio usuário (edição)
     @GetMapping("/me")
     public ResponseEntity<PerfilVitrine> getMinhaVitrine(@AuthenticationPrincipal Usuario usuario) {
@@ -25,7 +31,13 @@ public class VitrineController {
 
     // Endpoint para usuários logados verem a vitrine de OUTROS usuários
     @GetMapping("/{usuarioId}")
-    public ResponseEntity<PerfilVitrine> getVitrinePorUsuario(@PathVariable Long usuarioId) {
+    public ResponseEntity<PerfilVitrine> getVitrinePorUsuario(
+            @PathVariable Long usuarioId,
+            @AuthenticationPrincipal Usuario logado) {
+        // Quem foi bloqueado não vê a vitrine de quem bloqueou.
+        if (logado != null && bloqueioService.fuiBloqueadoPor(usuarioId, logado.getIdUsuario())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vitrine não encontrada.");
+        }
         PerfilVitrine vitrine = vitrineService.buscarPorUsuarioId(usuarioId);
         return ResponseEntity.ok(vitrine);
     }

@@ -25,6 +25,8 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class UsuarioService implements UserDetailsService {
@@ -49,17 +51,22 @@ public class UsuarioService implements UserDetailsService {
     // Repository do MongoDB (Vitrine de Fotos/Videos)
     private final PerfilVitrineRepository perfilVitrineRepository;
 
+    // Quem bloqueou quem: some do Descobrir nos dois sentidos.
+    private final BloqueioService bloqueioService;
+
     @Autowired
     public UsuarioService(UsuarioRepository usuarioRepository,
                           PasswordEncoder passwordEncoder,
                           PerfilAtletaService perfilAtletaService,
                           PerfilMarcaService perfilMarcaService,
-                          PerfilVitrineRepository perfilVitrineRepository) {
+                          PerfilVitrineRepository perfilVitrineRepository,
+                          BloqueioService bloqueioService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.perfilAtletaService = perfilAtletaService;
         this.perfilMarcaService = perfilMarcaService;
         this.perfilVitrineRepository = perfilVitrineRepository;
+        this.bloqueioService = bloqueioService;
     }
 
     @Override
@@ -209,7 +216,15 @@ public class UsuarioService implements UserDetailsService {
         if (solicitanteEhAdmin) {
             return usuarioRepository.findByTipoUsuario(tipo);
         }
-        // Para os demais, contas suspensas ou encerradas não aparecem.
-        return usuarioRepository.findByTipoUsuarioAndStatus(tipo, StatusConta.ATIVA);
+        // Para os demais, contas suspensas ou encerradas não aparecem, nem quem bloqueou ou foi bloqueado.
+        List<Usuario> ativos = usuarioRepository.findByTipoUsuarioAndStatus(tipo, StatusConta.ATIVA);
+        if (solicitante == null) {
+            return ativos;
+        }
+        Set<Long> ocultos = bloqueioService.idsComBloqueio(solicitante.getIdUsuario());
+        if (ocultos.isEmpty()) {
+            return ativos;
+        }
+        return ativos.stream().filter(u -> !ocultos.contains(u.getIdUsuario())).collect(Collectors.toList());
     }
 }

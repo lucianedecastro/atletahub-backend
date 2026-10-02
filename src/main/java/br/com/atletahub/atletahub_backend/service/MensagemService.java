@@ -31,17 +31,20 @@ public class MensagemService {
     private final UsuarioRepository usuarioRepository;
     private final TraducaoProperties traducaoProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final BloqueioService bloqueioService;
 
     public MensagemService(MensagemRepository mensagemRepository,
                            MatchRepository matchRepository,
                            UsuarioRepository usuarioRepository,
                            TraducaoProperties traducaoProperties,
-                           ApplicationEventPublisher eventPublisher) {
+                           ApplicationEventPublisher eventPublisher,
+                           BloqueioService bloqueioService) {
         this.mensagemRepository = mensagemRepository;
         this.matchRepository = matchRepository;
         this.usuarioRepository = usuarioRepository;
         this.traducaoProperties = traducaoProperties;
         this.eventPublisher = eventPublisher;
+        this.bloqueioService = bloqueioService;
     }
 
     /**
@@ -60,6 +63,12 @@ public class MensagemService {
         Usuario destinatario = idRemetente.equals(match.getIdUsuarioA())
                 ? match.getUsuarioB()
                 : match.getUsuarioA();
+
+        // Conversa congelada: com bloqueio (em qualquer direção) não entra mensagem nova.
+        // A resposta é genérica (422, que não desloga a pessoa) e não diz quem bloqueou.
+        if (bloqueioService.existeEntre(remetente.getIdUsuario(), destinatario.getIdUsuario())) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Não foi possível enviar esta mensagem.");
+        }
 
         // 3. Salva a mensagem original
         Mensagem mensagemSalva = mensagemRepository.save(new Mensagem(match, remetente, dados.texto()));

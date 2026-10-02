@@ -150,6 +150,9 @@ public class ContaService {
 
         perfilVitrineRepository.findByUsuarioId(id).ifPresent(perfilVitrineRepository::delete);
 
+        // Bloqueios em que a pessoa aparece (como quem bloqueou ou como bloqueada) perdem o sentido.
+        jdbc.update("delete from bloqueio where id_bloqueador = ? or id_bloqueado = ?", id, id);
+
         // Links de "esqueci minha senha" ainda abertos deixam de valer.
         redefinicaoSenhaRepository.invalidarAbertos(id, Instant.now());
 
