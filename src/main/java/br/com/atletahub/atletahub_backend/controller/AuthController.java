@@ -4,6 +4,7 @@ import br.com.atletahub.atletahub_backend.dto.usuario.DadosLogin;
 import br.com.atletahub.atletahub_backend.dto.usuario.DadosRegistroUsuario;
 import br.com.atletahub.atletahub_backend.model.TipoUsuario;
 import br.com.atletahub.atletahub_backend.model.Usuario;
+import br.com.atletahub.atletahub_backend.service.ConviteService;
 import br.com.atletahub.atletahub_backend.service.TokenService;
 import br.com.atletahub.atletahub_backend.service.UsuarioService;
 import jakarta.validation.Valid;
@@ -37,6 +38,17 @@ public class AuthController {
 
     @Autowired
     private TokenService tokenService;
+
+    @Autowired
+    private ConviteService conviteService;
+
+    // ==========================
+    // CONVITE (beta fechado): o site pergunta se o cadastro exige código
+    // ==========================
+    @GetMapping("/convite")
+    public ResponseEntity<Map<String, Boolean>> convite() {
+        return ResponseEntity.ok(Map.of("exigido", conviteService.exigido()));
+    }
 
     // ==========================
     // LOGIN
@@ -106,6 +118,14 @@ public class AuthController {
     @PostMapping({"/registrar", "/register"})
     public ResponseEntity<?> registrar(@RequestBody @Valid DadosRegistroUsuario dados) {
         logger.info("Registro solicitado (tipo={})", dados.tipoUsuario());
+
+        // Beta fechado: sem código válido o cadastro não é criado.
+        // 422 (e não 401/403) para o site não tratar como sessão expirada.
+        if (!conviteService.valido(dados.codigoConvite())) {
+            logger.info("Cadastro recusado: código de convite inválido");
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("message", "Código de convite inválido. Peça o seu pelo Instagram."));
+        }
 
         try {
             usuarioService.registrarUsuario(dados);

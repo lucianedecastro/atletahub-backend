@@ -59,6 +59,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/registrar").permitAll()
+                        // 🔓 O site pergunta se o cadastro exige código de convite (beta fechado)
+                        .requestMatchers(HttpMethod.GET, "/auth/convite").permitAll()
                         // 🔓 Recuperação de senha (pedido do link e troca da senha com o link)
                         .requestMatchers(HttpMethod.POST, "/auth/esqueci-senha").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/redefinir-senha").permitAll()

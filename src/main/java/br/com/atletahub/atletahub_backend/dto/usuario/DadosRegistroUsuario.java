@@ -61,7 +61,11 @@ public record DadosRegistroUsuario(
 
         @NotNull(message = "É obrigatório concordar com a Política de Privacidade")
         @AssertTrue(message = "É obrigatório concordar com a Política de Privacidade")
-        Boolean concordoPrivacidade
+        Boolean concordoPrivacidade,
+
+        // Beta fechado: código de convite (conferido no AuthController quando CONVITE_CODIGOS está definida).
+        @Size(max = 64, message = "Código de convite inválido")
+        String codigoConvite
 
 ) {
 }
