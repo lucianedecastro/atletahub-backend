@@ -44,6 +44,8 @@ public class AdminService {
     @Autowired private PerfilVitrineRepository perfilVitrineRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private ContaService contaService;
+    @Autowired private CloudinaryService cloudinaryService;
 
     // =====================================================
     // NÚMEROS
@@ -190,9 +192,8 @@ public class AdminService {
     }
 
     /**
-     * Atende pedido de exclusão (LGPD): anonimiza a conta e apaga os dados pessoais do perfil e a vitrine.
-     * Mensagens trocadas ficam (a outra pessoa também é parte da conversa) até a política de retenção ser definida.
-     * Fotos no Cloudinary NÃO são apagadas daqui: são removidas à mão no painel do Cloudinary.
+     * Atende pedido de exclusão (LGPD) feito por e-mail ao suporte: a mesma rotina da exclusão pela própria pessoa
+     * (anonimiza a conta, apaga dados do perfil, a vitrine e os arquivos no Cloudinary; mensagens ficam).
      */
     @Transactional
     public void encerrar(Long idAdmin, Long idAlvo, String confirmarEmail) {
@@ -205,26 +206,7 @@ public class AdminService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O e-mail digitado não confere com o da conta.");
         }
 
-        alvo.setNome("Conta removida");
-        alvo.setEmail("removido-" + idAlvo + "@atletahub.invalid");
-        alvo.setSenha(passwordEncoder.encode(UUID.randomUUID().toString()));
-        alvo.setCidade(null);
-        alvo.setEstado(null);
-        alvo.setDataNascimento(null);
-        alvo.setStatus(StatusConta.ENCERRADA);
-        alvo.setMotivoSuspensao(null);
-        alvo.setStatusAlteradoEm(Instant.now());
-        // O registro do aceite dos termos (termosAceitosEm e termosVersao) é mantido como prova.
-        usuarioRepository.save(alvo);
-
-        jdbc.update("update perfil_atleta set idade = null, posicao = null, altura = null, peso = null, "
-                + "data_nascimento = null, telefone_contato = null, observacoes = null, midiakit_url = null, "
-                + "competicoes_titulos = null, redes_social = null, historico = null, foto_url = null "
-                + "where id_usuario = ?", idAlvo);
-        jdbc.update("update perfil_marca set produto = null, tempo_mercado = null, atletas_patrocinados = null, "
-                + "tipo_investimento = null, redes_social = null, logo_url = null where id_usuario = ?", idAlvo);
-
-        perfilVitrineRepository.findByUsuarioId(idAlvo).ifPresent(perfilVitrineRepository::delete);
+        contaService.encerrar(alvo);
         logger.info("Admin {} encerrou e anonimizou a conta {}", idAdmin, idAlvo);
     }
 
@@ -239,6 +221,8 @@ public class AdminService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Mídia não encontrada na vitrine.");
         }
         perfilVitrineRepository.save(vitrine);
+        // Apaga também o arquivo no Cloudinary (se falhar, a mídia já saiu da vitrine e o erro fica no log).
+        cloudinaryService.apagarPorUrls(List.of(url));
         logger.info("Mídia removida da vitrine do usuário {}", idUsuario);
     }
 
