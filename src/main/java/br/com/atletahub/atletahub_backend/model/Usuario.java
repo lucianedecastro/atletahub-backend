@@ -65,6 +65,18 @@ public class Usuario implements UserDetails {
     @Column(name = "termos_versao", length = 20)
     private String termosVersao;
 
+    // --- STATUS DA CONTA (V8 Migration) ---
+    // SUSPENSA e ENCERRADA não conseguem entrar (isEnabled = false) e somem do Descobrir.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private StatusConta status = StatusConta.ATIVA;
+
+    @Column(name = "motivo_suspensao", length = 500)
+    private String motivoSuspensao;
+
+    @Column(name = "status_alterado_em")
+    private Instant statusAlteradoEm;
+
     // --- CONSTRUTOR ATUALIZADO ---
     // Agora exige o idioma na criação
     public Usuario(String nome, String email, String senha, TipoUsuario tipoUsuario, String idiomaPreferencia) {
@@ -77,12 +89,9 @@ public class Usuario implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        // ADMIN só tem o papel de admin: não atua como atleta nem como marca.
         if (this.tipoUsuario == TipoUsuario.ADMIN) {
-            return List.of(
-                    new SimpleGrantedAuthority("ROLE_ADMIN"),
-                    new SimpleGrantedAuthority("ROLE_ATLETA"),
-                    new SimpleGrantedAuthority("ROLE_MARCA")
-            );
+            return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
         } else if (this.tipoUsuario == TipoUsuario.ATLETA) {
             return List.of(new SimpleGrantedAuthority("ROLE_ATLETA"));
         } else {
@@ -117,7 +126,7 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return this.status == null || this.status == StatusConta.ATIVA;
     }
 
     // E-mail fora do toString (LGPD: evita dado pessoal em log).

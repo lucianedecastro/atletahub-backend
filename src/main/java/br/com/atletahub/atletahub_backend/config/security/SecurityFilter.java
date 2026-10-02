@@ -1,5 +1,6 @@
 package br.com.atletahub.atletahub_backend.config.security;
 
+import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.repository.UsuarioRepository;
 import br.com.atletahub.atletahub_backend.service.TokenService;
 import com.auth0.jwt.exceptions.JWTVerificationException;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Component
 public class SecurityFilter extends OncePerRequestFilter {
@@ -43,14 +45,27 @@ public class SecurityFilter extends OncePerRequestFilter {
                 // O subject do token é o ID do usuário.
                 Long idUsuario = Long.valueOf(tokenService.getSubject(token));
 
-                usuarioRepository.findById(idUsuario).ifPresent(usuario -> {
+                Optional<Usuario> encontrado = usuarioRepository.findById(idUsuario);
+                if (encontrado.isPresent()) {
+                    Usuario usuario = encontrado.get();
+
+                    // Conta suspensa ou encerrada: o token deixa de valer na hora.
+                    if (!usuario.isEnabled()) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        response.getWriter().write(
+                                "{\"message\":\"Esta conta está suspensa. Entre em contato com o suporte.\"}");
+                        return;
+                    }
+
                     var authentication = new UsernamePasswordAuthenticationToken(
                             usuario,
                             null,
                             usuario.getAuthorities()
                     );
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                });
+                }
 
             } catch (JWTVerificationException | NumberFormatException ex) {
                 // Token inválido, expirado ou no formato antigo (subject = e-mail):

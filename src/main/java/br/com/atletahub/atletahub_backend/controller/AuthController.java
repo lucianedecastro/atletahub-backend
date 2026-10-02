@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -52,6 +53,14 @@ public class AuthController {
             Authentication authentication = authenticationManager.authenticate(authToken);
             Usuario usuario = (Usuario) authentication.getPrincipal();
 
+            // Administrador NÃO entra pelo site: o acesso dele é só pelo painel local (/admin/auth/login).
+            // A resposta é igual à de senha errada, para não revelar que o e-mail é de um admin.
+            if (usuario.getTipoUsuario() == TipoUsuario.ADMIN) {
+                logger.warn("Login de administrador recusado na rota pública");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Email ou senha inválidos"));
+            }
+
             String token = tokenService.generateToken(usuario);
 
             Map<String, Object> response = new HashMap<>();
@@ -76,6 +85,12 @@ public class AuthController {
             logger.info("Login recusado: credenciais inválidas");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Email ou senha inválidos"));
+
+        } catch (DisabledException e) {
+            // Conta suspensa pelo admin.
+            logger.info("Login recusado: conta suspensa");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Esta conta está suspensa. Entre em contato com o suporte."));
 
         } catch (Exception e) {
             // Falha de infraestrutura (ex.: banco acordando) NÃO é "senha errada".

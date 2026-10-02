@@ -1,6 +1,7 @@
 package br.com.atletahub.atletahub_backend.service;
 
 import br.com.atletahub.atletahub_backend.dto.usuario.DadosRegistroUsuario;
+import br.com.atletahub.atletahub_backend.model.StatusConta;
 import br.com.atletahub.atletahub_backend.model.TipoUsuario;
 import br.com.atletahub.atletahub_backend.model.Usuario;
 import br.com.atletahub.atletahub_backend.model.mongo.PerfilVitrine; // Import do Modelo Mongo
@@ -205,6 +206,10 @@ public class UsuarioService implements UserDetailsService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhum usuário encontrado.");
         }
 
-        return usuarioRepository.findByTipoUsuario(tipo);
+        if (solicitanteEhAdmin) {
+            return usuarioRepository.findByTipoUsuario(tipo);
+        }
+        // Para os demais, contas suspensas ou encerradas não aparecem.
+        return usuarioRepository.findByTipoUsuarioAndStatus(tipo, StatusConta.ATIVA);
     }
 }

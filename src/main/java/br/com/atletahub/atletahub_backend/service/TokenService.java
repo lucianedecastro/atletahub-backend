@@ -43,6 +43,11 @@ public class TokenService {
     }
 
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, expirationMinutes);
+    }
+
+    /** Mesmo token, com duração própria (o painel admin usa um token mais curto). */
+    public String generateToken(UserDetails userDetails, long minutosDeValidade) {
         Usuario usuario = (Usuario) userDetails;
         try {
             Instant agora = Instant.now();
@@ -54,7 +59,7 @@ public class TokenService {
                     .withClaim("role", "ROLE_" + usuario.getTipoUsuario().name())
                     .withIssuedAt(agora)
                     // Instant.now() é sempre UTC: não depende do fuso do servidor.
-                    .withExpiresAt(agora.plus(Duration.ofMinutes(expirationMinutes)))
+                    .withExpiresAt(agora.plus(Duration.ofMinutes(minutosDeValidade)))
                     .sign(algorithm);
         } catch (JWTCreationException exception) {
             throw new RuntimeException("Erro ao gerar token JWT", exception);

@@ -60,6 +60,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/registrar").permitAll()
 
+                        // 🛡️ Painel admin: login com chave + papel ADMIN (a chave também é exigida
+                        // em TODA rota /admin pelo AdminAccessFilter, antes de chegar aqui).
+                        .requestMatchers(HttpMethod.POST, "/admin/auth/login").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        // Denúncias feitas por usuários logados
+                        .requestMatchers(HttpMethod.POST, "/denuncias").authenticated()
+
                         // 🔓 Públicos
                         .requestMatchers(HttpMethod.GET, "/modalidades").permitAll()
                         .requestMatchers("/error").permitAll()
